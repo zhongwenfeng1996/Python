@@ -47,11 +47,14 @@ def main() -> int:
     print()
 
     # ---------- 1. Python 版本 ----------
+    # 门槛是 3.10 而不是 3.9：教程第 08 章用了 `ToolCall | None` 这种写法，
+    # 它在 3.9 上会直接 TypeError（Pydantic 会去求值注解）。
+    # 自检放行 3.9、教程却跑不起来，是比"不检查"更糟的体验。
     v = sys.version_info
     check(
         f"Python 版本  {v.major}.{v.minor}.{v.micro}",
-        v >= (3, 9),
-        fix="需要 Python 3.9 或更高（推荐 3.11+）",
+        v >= (3, 10),
+        fix="需要 Python 3.10 或更高（推荐 3.12）——教程第 08 章用到 `X | None` 语法",
     )
     print(f"     解释器路径：{sys.executable}")
 
@@ -64,9 +67,17 @@ def main() -> int:
         "03_chunk_text.py": "文本切片脚本",
         "js_to_python.md": "JS → Python 速查表",
         "docs/README.md": "教程目录",
-        "docs/01-变量与类型.md": "第 1 章",
-        "docs/10-调试与报错.md": "第 10 章",
     }
+    # 10 章教程逐章检查：只抽查首尾两章的话，中间删掉几章也照样"通过"，
+    # 那这个自检就没有意义了。
+    chapter_titles = {
+        1: "变量与类型", 2: "字符串与格式化", 3: "列表字典与推导式",
+        4: "条件循环与作用域", 5: "函数", 6: "异常与文件",
+        7: "模块与虚拟环境", 8: "类与对象", 9: "异步与并发", 10: "调试与报错",
+    }
+    for num, title in chapter_titles.items():
+        required[f"docs/{num:02d}-{title}.md"] = f"第 {num} 章"
+
     missing = []
     for name, desc in required.items():
         exists = (here / name).exists()
@@ -99,7 +110,9 @@ def main() -> int:
     else:
         check("OPENAI_API_KEY 未设置", False,
               detail="→ 只能用 mock 服务练习，不能真实调用",
-              fix="export OPENAI_API_KEY=sk-你的key", warn_only=True)
+              fix='Windows: $env:OPENAI_API_KEY="sk-你的key"'
+                  '  ｜  macOS/Linux: export OPENAI_API_KEY=sk-你的key',
+              warn_only=True)
 
     check("OPENAI_BASE_URL", bool(base_url), detail=base_url or "（用默认值）", warn_only=True)
     check("MODEL", bool(model), detail=model or "（用默认值）", warn_only=True)
@@ -118,7 +131,8 @@ def main() -> int:
         "mock 服务 (127.0.0.1:8765)",
         mock_running,
         detail="正在运行" if mock_running else "未启动",
-        fix="另开一个终端运行：python3 ../week01/mock_server.py",
+        fix="另开一个终端运行：py -3 ..\\week01\\mock_server.py（Windows）"
+            " 或 python3 ../week01/mock_server.py（macOS/Linux）",
         warn_only=True,
     )
 
@@ -126,12 +140,23 @@ def main() -> int:
     print()
     print("—— 环境隔离 ——")
     in_venv = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
-    venv_dir = here.parent / ".venv"
+    # 虚拟环境可能建在 python_basics 下（教程正文的写法），也可能建在 ai-lab 下（仓库根）。
+    # 两处都检查，否则"照教程做了"却被报成"未创建"，会把人引入歧途。
+    candidates = [here / ".venv", here.parent / ".venv"]
+    venv_dir = next((p for p in candidates if p.exists()), None)
+    if in_venv:
+        detail = f"已激活：{sys.prefix}"
+    elif venv_dir:
+        detail = f"存在但未激活（{venv_dir}）"
+    else:
+        detail = "未创建"
     check(
         "虚拟环境",
         in_venv,
-        detail="已激活" if in_venv else ("存在但未激活" if venv_dir.exists() else "未创建"),
-        fix="python3 -m venv .venv && source .venv/bin/activate"
+        detail=detail,
+        fix="python -m venv .venv 然后激活："
+            r".\.venv\Scripts\Activate.ps1（Windows）"
+            r" / source .venv/bin/activate（macOS）"
             "（前 3 天练习零依赖，可以不建）",
         warn_only=True,
     )
@@ -143,10 +168,18 @@ def main() -> int:
     if failed == 0:
         print(f"{OK} 环境检查通过，可以开始练习了。")
         print()
-        print("下一步：")
+        print("下一步（Windows PowerShell）：")
+        print("  终端 1： py -3 ..\\week01\\mock_server.py")
+        print("  终端 2： $env:OPENAI_BASE_URL = \"http://127.0.0.1:8765/v1\"")
+        print("           $env:OPENAI_API_KEY  = \"test\"")
+        print("           py -3 01_hello_llm.py")
+        print()
+        print("下一步（macOS / Linux）：")
         print("  终端 1： python3 ../week01/mock_server.py")
         print("  终端 2： OPENAI_BASE_URL=http://127.0.0.1:8765/v1 \\")
         print("           OPENAI_API_KEY=test python3 01_hello_llm.py")
+        print()
+        print("  Windows 命令差异详见 ai-lab/docs/windows-quickstart.md")
     else:
         print(f"{BAD} 有 {failed} 项必需检查未通过，请先按上面的提示修复。")
         if missing:
