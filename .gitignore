@@ -13,6 +13,14 @@ scratch/
 tmp/
 *.tmp
 
+# ---------- pip 的临时目录 ----------
+# 为什么需要这条：pip 在**当前工作目录**下建 pip-unpack-*/pip-metadata-*/pip-install-*
+# 之类的临时目录。如果安装时 cwd 正好是仓库根，它们就会被 git 看见并提交进去。
+# 这不是假设 —— 本项目真的发生过一次，16 个垃圾目录被提交后才清理掉。
+pip-*/
+build/
+*.egg-info/
+
 # ---------- 运行日志（run.ps1 / verify_e2e.py 产生） ----------
 logs/
 
