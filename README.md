@@ -67,13 +67,19 @@
     ├── tools/
     │   └── env_report.py              # 环境自检（Windows 优先）
     ├── projects/
-    │   └── project1-stream-chat/      # 🎯 项目一：流式多模型对话（已完成）
-    │       ├── backend/               #   FastAPI + httpx，无状态可降级
-    │       ├── frontend/              #   Vue 3 + 手写 SSE 解析（零构建）
-    │       ├── tests/                 #   13 条验收断言（真进程 + 真 HTTP）
-    │       ├── tools/verify_e2e.py    #   端到端证据（TTFT / 成本实测）
-    │       ├── docs/ADR.md            #   6 条架构决策记录
-    │       └── run.ps1                #   一键启动
+    │   ├── project1-stream-chat/      # 🎯 项目一：流式多模型对话（已完成）
+    │   │   ├── backend/               #   FastAPI + httpx，无状态可降级
+    │   │   ├── frontend/              #   Vue 3 + 手写 SSE 解析（零构建）
+    │   │   ├── eval/                  #   评估：断言 + 门禁 + 报告
+    │   │   ├── tests/                 #   28 条测试（13 API + 15 评估框架）
+    │   │   ├── tools/verify_e2e.py    #   端到端证据（TTFT / 成本实测）
+    │   │   ├── docs/ADR.md            #   6 条架构决策记录
+    │   │   ├── run.ps1                #   一键启动
+    │   │   └── eval.ps1               #   评估入口（Windows 版 make eval）
+    │   └── mcp-minimal/               # 🎯 MCP Server 最小实验（已完成）
+    │       ├── mcp_server.py          #   纯标准库 JSON-RPC over stdio
+    │       ├── mcp_client.py          #   自写客户端 + 协议演示
+    │       └── tests/                 #   24 条协议测试（含 8 个注入载荷）
     ├── data/
     │   ├── schema.sql                 # Postgres 建表 + 六个数据陷阱说明
     │   └── out/                       # 生成的数据（git 忽略，可重建）
@@ -91,6 +97,7 @@
 | # | 项目 | 核心考点 | 完成周 | 状态 |
 |---|---|---|---|---|
 | 1 | [流式多模型对话](ai-lab/projects/project1-stream-chat/README.md) | 流式、中断、降级、成本可视化 | W3 | ✅ 后端+测试完成，前端待浏览器验证 |
+| — | [MCP Server 最小实验](ai-lab/projects/mcp-minimal/README.md) | 协议、工具调用、工具安全 | 加餐 | ✅ 24 条协议测试通过 |
 | 2 | 企业知识库问答 | 切片、混合检索、rerank、评估、引用 | W7 | ⬜ |
 | 3 | 对话式数据分析 Agent | schema 检索、语义层、EX 评估、图表、SQL 安全 | W12 | ⬜ |
 

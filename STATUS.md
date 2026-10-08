@@ -67,12 +67,21 @@
       - [x] 13/13 验收测试通过（真进程 + 真 HTTP）
       - [x] 端到端验证脚本（TTFT 83ms / 成本 $0.000045 实测）
       - [ ] 前端在真实浏览器里的渲染与交互（**未验证**）
+- [x] 评估脚本基础 —— `eval/run_eval.py` + `eval.ps1`（Windows 版 make eval）
+      - [x] 断言全部机械可判定（关键词 / JSON / 长度 / 拒答 / 禁用词）
+      - [x] 离线可跑（自动起 mock 上游），带 `--fail-under` / `--stability-under` 门禁
+      - [x] **对照实验证明指标不是摆设**：jitter 上游让稳定性 100% → 0%，门禁正确拦截
+      - [x] 测试 28 passed（13 API + 15 评估框架自测）
+- [x] MCP Server 最小实验 —— `ai-lab/projects/mcp-minimal/`
+      - [x] 纯标准库手写 JSON-RPC over stdio（initialize / tools/list / tools/call）
+      - [x] **24 条协议测试通过**：握手、错误码语义、通知无响应、参数校验
+      - [x] 8 个真实注入载荷全部被拒（`calc` 用 AST 解析，不用 eval）
+      - [x] **不暴露 read_file / run_command** —— 有测试专门盯着这件事
+      - [x] README 写清" MCP vs function calling"的机制级区别
 - [ ] 项目二：RAG 全链路（解析、切片、pgvector、rerank、引用）
 - [ ] 项目三：Text-to-SQL + 语义层 + 图表 + SQL 安全
-- [ ] 评估脚本（`make eval` 雏形）与量化指标记录
 - [ ] Docker Compose 一键启动
 - [ ] CI（lint + 测试 + 评估门禁）
-- [ ] MCP Server 最小实验
 - [ ] 简历、技术文章、投递记录
 
 ---
@@ -99,8 +108,24 @@
 ### P2 · 之后
 
 - [ ] 把仓库推到 GitHub，开始 build in public（缺你的账号凭据）
-- [ ] MCP Server 最小实验（50 行内）
 - [ ] 写第 1 篇技术文章《手写 SSE 流式解析》
+- [ ] 把 MCP Server 接进真实客户端（Claude Desktop / Cursor）验证一次
+
+---
+
+## 本轮（目标轮次 1/12）完成情况
+
+| 目标项 | 状态 | 证据 |
+|---|---|---|
+| 1) Windows 开发环境 + git/公开仓库 | ✅ 环境完成 / ⏸️ 远端待推 | Python 3.12.10 + `.venv` + `setup.ps1` 实跑通过；6 个 commit |
+| 2) 项目一落地 | ✅ 后端+前端+测试+ADR | 28 passed；`verify_e2e.py` 实测 TTFT 83ms、成本 $0.000045 |
+| 3) 评估脚本基础（make eval 雏形） | ✅ | `eval.ps1` 六个动作；对照实验证明稳定性门禁有效（100% → 0%） |
+| 4) 最小 MCP Server 实验 | ✅ | 24 passed；8 个注入载荷被拒 |
+
+**全量复验（独立解释器下重跑）**：项目一 28 passed · MCP 24 passed ·
+数据集 31/31 断言 · 评估门禁通过。**合计 52 个自动化测试。**
+
+**只剩一件需要你手动做**：项目一前端在真实浏览器里的验证（开发环境无浏览器）。
 
 ---
 
