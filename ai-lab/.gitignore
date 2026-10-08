@@ -1,0 +1,19 @@
+# 生成物（可随时用脚本重建，不入库）
+data/out/*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 密钥与环境
+.env
+.env.local
+
+# 本地数据库
+*.db
+*.sqlite3
+
+# 系统
+.DS_Store

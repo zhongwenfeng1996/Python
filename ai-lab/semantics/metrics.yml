@@ -1,0 +1,223 @@
+# ============================================================
+# 语义层定义（Semantic Layer）
+# ============================================================
+# 为什么需要它：
+#   Text-to-SQL 的根本难点不是"写 SQL"，而是"模型不知道业务口径"。
+#   用户问"活跃用户有多少"，模型只能猜 —— 猜"最近登录过"还是"最近付过费"？
+#   把口径从提示词里搬出来、固化成可引用的定义，是本项目最重要的护城河。
+#
+# 面试话术：
+#   "裸接数据库做 Text-to-SQL，准确率天花板大概 60-70%，因为模型在猜口径；
+#    加了语义层之后我做到了 X%，而且每个数字都能追溯到定义和责任人。"
+#
+# 与代码的衔接：这个 YAML 由后端加载，命中指标时把定义注入提示词，
+# 再由执行层校验生成的 SQL 是否引用了允许的表和字段。
+# ============================================================
+
+version: 1
+dataset: saas_lab
+
+# ------------------------------------------------------------
+# 维度
+# ------------------------------------------------------------
+dimensions:
+  - name: date
+    display_name: 日期
+    column: events.occurred_at
+    granularity: [day, week, month, quarter]
+    synonyms: [时间, 日期, 趋势, 按天, 按月]
+
+  - name: plan
+    display_name: 套餐
+    column: subscriptions.plan
+    synonyms: [套餐, 版本, 计划, 档位]
+    values: [starter, growth, scale]
+
+  - name: channel
+    display_name: 获客渠道
+    column: users.channel
+    synonyms: [渠道, 来源, 获客渠道, 投放渠道]
+    # 重要：源数据大小写不统一，必须先归一化再聚合
+    normalization: "lower(trim(channel))"
+    note: "存在 NULL，统计占比时需决定是否计入 '未知'"
+
+  - name: country
+    display_name: 国家
+    column: users.country
+    synonyms: [国家, 地区, 区域]
+    note: "存在 NULL"
+
+  - name: industry
+    display_name: 行业
+    column: tenants.industry
+    synonyms: [行业, 垂直领域]
+
+# ------------------------------------------------------------
+# 指标
+# ------------------------------------------------------------
+metrics:
+  - name: active_users
+    display_name: 活跃用户
+    synonyms: [活跃, 活跃数, 活跃用户数, DAU, MAU]
+    unit: 人
+    # ambiguity = true 表示必须消歧，Agent 不能自己闷头选一个
+    ambiguity: true
+    definitions:
+      - id: login_30d
+        label: 登录口径
+        is_default: true
+        description: 最近 30 天内产生过 login 事件的去重用户数
+        sql: |
+          SELECT COUNT(DISTINCT user_id) AS value
+          FROM events
+          WHERE event_type = 'login'
+            AND occurred_at >= :start_date
+            AND occurred_at <  :end_date
+      - id: paying_30d
+        label: 付费口径
+        description: 最近 30 天内有成功付款的去重用户数
+        sql: |
+          SELECT COUNT(DISTINCT user_id) AS value
+          FROM payments
+          WHERE status = 'paid'
+            AND paid_at >= :start_date
+            AND paid_at <  :end_date
+    warning: |
+      两种口径的数值差异极大。因存在 freemium 免费用户层，
+      登录口径通常是付费口径的 1.5–2.5 倍（免费用户会活跃但不付费）。
+      且趋势可能相反 —— 最近 30 天登录口径显著下跌，付费口径基本持平。
+      回答时必须声明所用口径。
+
+  - name: mrr
+    display_name: 月度经常性收入
+    synonyms: [MRR, 月经常性收入, 月度收入]
+    unit: 元
+    ambiguity: true
+    definitions:
+      - id: active_only
+        label: 仅正式订阅（默认）
+        is_default: true
+        description: status = 'active' 的订阅 mrr_cents 之和
+        sql: |
+          SELECT SUM(mrr_cents) / 100.0 AS value
+          FROM subscriptions
+          WHERE status = 'active'
+      - id: include_trialing
+        label: 含试用中
+        description: status in ('active', 'trialing') 的订阅 mrr_cents 之和
+        sql: |
+          SELECT SUM(mrr_cents) / 100.0 AS value
+          FROM subscriptions
+          WHERE status IN ('active', 'trialing')
+    warning: "含试用口径会高估实收。试用期不产生 payments 记录。"
+
+  - name: revenue
+    display_name: 收入
+    synonyms: [收入, 营收, 流水, 实收]
+    unit: 元
+    ambiguity: true
+    definitions:
+      - id: net
+        label: 净收入（扣除退款，默认）
+        is_default: true
+        sql: |
+          SELECT (SUM(CASE WHEN status = 'paid'     THEN amount_cents
+                           WHEN status = 'refunded' THEN -amount_cents
+                           ELSE 0 END)) / 100.0 AS value
+          FROM payments
+          WHERE paid_at >= :start_date
+            AND paid_at <  :end_date
+      - id: gross
+        label: 毛收入（不扣退款）
+        sql: |
+          SELECT SUM(amount_cents) / 100.0 AS value
+          FROM payments
+          WHERE status = 'paid'
+            AND paid_at >= :start_date
+            AND paid_at <  :end_date
+    warning: "payments.status = 'failed' 从未真正收款，任何口径都必须排除。"
+
+  - name: churn_rate
+    display_name: 流失率
+    synonyms: [流失, 流失率, 客户流失]
+    unit: "%"
+    ambiguity: true
+    definitions:
+      - id: subscription_canceled
+        label: 订阅取消口径（默认）
+        is_default: true
+        description: status = 'canceled' 的订阅占比
+        sql: |
+          SELECT 100.0 * SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) / COUNT(*) AS value
+          FROM subscriptions
+      - id: inactive_60d
+        label: 60 天无登录口径
+        description: 最近 60 天没有任何事件的用户占比（沉默即流失）
+        sql: |
+          SELECT 100.0 * (1 - COUNT(DISTINCT user_id)::numeric /
+                 (SELECT COUNT(*) FROM users)) AS value
+          FROM events
+          WHERE occurred_at >= :start_date
+    warning: "两种口径相差很大。业务方说'流失'时，先问清是哪种。"
+
+  - name: trial_conversion_rate
+    display_name: 试用转化率
+    synonyms: [试用转化, 试用转付费]
+    unit: "%"
+    definitions:
+      - id: default
+        is_default: true
+        description: 曾经 trialing 的用户中，之后产生过 paid 付款的比例
+        sql: |
+          WITH trial_users AS (
+              SELECT DISTINCT user_id FROM subscriptions WHERE status = 'trialing'
+          )
+          SELECT 100.0 * COUNT(DISTINCT p.user_id)::numeric /
+                 NULLIF((SELECT COUNT(*) FROM trial_users), 0) AS value
+          FROM payments p
+          JOIN trial_users t ON t.user_id = p.user_id
+          WHERE p.status = 'paid'
+
+# ------------------------------------------------------------
+# 消歧策略（Agent 必须遵守）
+# ------------------------------------------------------------
+ambiguity_policy:
+  on_ambiguous_metric: |
+    当问题命中 ambiguity: true 的指标、且用户未指明口径时，Agent 必须：
+      1. 先按 is_default 的口径给出答案；
+      2. 在回答中显式声明所用口径（例如"按登录口径，活跃用户为 X"）；
+      3. 在 UI 上提供一键切换口径的入口；
+      4. 若切换后结论相反（趋势方向不同），必须主动提示用户存在口径分歧。
+  rationale: |
+    数据分析产品的头号信任杀手不是算错，而是"不告诉你算的是什么"。
+    口径透明比口径正确更重要。
+
+# ------------------------------------------------------------
+# 数据质量约束（执行层校验用）
+# ------------------------------------------------------------
+quality_rules:
+  - id: channel_normalization
+    rule: "聚合 users.channel 前必须 lower(trim(...))"
+    reason: "源数据存在 'Google' / 'google' / 'GOOGLE' / NULL"
+  - id: email_dedup
+    rule: "用户计数优先用 user_id，不要用 COUNT(DISTINCT email)"
+    reason: "约 0.5% 邮箱存在大小写重复记录"
+  - id: exclude_failed_payments
+    rule: "任何收入口径都必须排除 status = 'failed'"
+  - id: timezone_safety
+    rule: "时间过滤一律用 TIMESTAMPTZ 比较，禁止字符串比较"
+    reason: "约 30% 事件以 +08:00 表示"
+
+# ------------------------------------------------------------
+# 安全白名单（第 11 周实现）
+# ------------------------------------------------------------
+safety:
+  readonly: true
+  allowed_statements: [SELECT, WITH]
+  forbidden_keywords: [INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, GRANT, COPY, ";"]
+  require_limit: true
+  max_scan_rows: 5000000
+  statement_timeout_ms: 5000
+  row_level_security:
+    enabled: true
+    rule: "所有查询自动追加 tenant_id = :current_tenant"

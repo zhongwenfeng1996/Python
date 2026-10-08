@@ -1,0 +1,47 @@
+# 统一换行符：仓库里一律存 LF，检出到工作区按平台
+#
+# 为什么必须显式写：
+#   仓库里既有 .sh（给 Linux/Docker 用）也有 Windows 上的 Python。
+#   如果 .sh 以 CRLF 提交，在 Linux 容器里会报
+#   "bad interpreter: No such file or directory" 或 "exec format error"。
+#   仅靠 core.autocrlf 不够 —— 它是每个开发者本地的设置，换台机器就失效，
+#   而 .gitattributes 会随仓库走。
+#
+# 参考：https://git-scm.com/docs/gitattributes
+
+* text=auto eol=lf
+
+# ---- 明确按二进制处理，避免被改动字节 ----
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.xlsx binary
+*.docx binary
+*.pptx binary
+*.zip  binary
+
+# ---- Windows 专属脚本保留 CRLF ----
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# ---- Shell 脚本必须是 LF，否则 Linux/Docker 里无法执行 ----
+*.sh   text eol=lf
+
+# ---- 数据与文档 ----
+*.csv  text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+*.sql  text eol=lf
+
+# ---- 语言默认统计（让 GitHub 正确识别仓库语言构成） ----
+*.py   text eol=lf
+*.ts   text eol=lf
+*.vue  text eol=lf
+*.js   text eol=lf
