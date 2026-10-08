@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>流式多模型对话 · 项目一</title>
+<!--
+  项目一前端 · 学习计划 §3 第 3 周
+
+  技术选择（ADR 摘要，完整版见 ../docs/ADR.md）：
+  - Vue 3 + TS，通过 CDN 引入，**不引入构建链**
+    理由：这一周的验收点是"流式渲染 + 中断 + 成本可视化"，不是"配好 Vite"。
+          用零构建的方式能让 W1 的三天时间全花在 SSE 语义上。
+          等 W6 前后补 Next.js 时再引入构建工具，那时它才有真正的收益。
+  - 手写 fetch + ReadableStream 解析 SSE，不用 AI SDK
+    理由：计划 §0 原则"先手写，再上框架"。手写过一遍才知道框架替你做了什么。
+
+  这个文件里最值得读的是 parseSSE() 和 send() —— 流式的两个核心难点都在那里。
+-->
+<script src="https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --border: #272b34;
+    --text: #e6e8eb; --muted: #8b93a1; --accent: #4c8dff;
+    --user: #1e2530; --ai: #171a21; --warn: #ffb020; --err: #ff5b5b;
+    --ok: #3ddc84;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.65 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  #app { max-width: 900px; margin: 0 auto; padding: 16px; height: 100vh;
+         display: flex; flex-direction: column; gap: 12px; }
+
+  header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px;
+           border: 1px solid var(--border); color: var(--muted); }
+  .badge.mock { color: var(--warn); border-color: var(--warn); }
+  .badge.live { color: var(--ok); border-color: var(--ok); }
+  .spacer { flex: 1; }
+  select, button, input, textarea {
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font: inherit; font-size: 13px;
+  }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.danger { border-color: var(--err); color: var(--err); }
+
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+              font-size: 12px; color: var(--muted); }
+  .controls input[type=range] { width: 130px; padding: 0; }
+
+  #log { flex: 1; overflow-y: auto; border: 1px solid var(--border);
+         border-radius: 8px; background: var(--panel); padding: 8px; }
+  .msg { padding: 10px 12px; border-radius: 8px; margin: 6px 0;
+         white-space: pre-wrap; word-break: break-word; }
+  .msg.user { background: var(--user); }
+  .msg.assistant { background: var(--ai); border: 1px solid var(--border); }
+  .role { font-size: 11px; color: var(--muted); margin-bottom: 4px;
+          display: flex; gap: 8px; align-items: center; }
+  .cursor { display: inline-block; width: 7px; height: 14px;
+            background: var(--accent); vertical-align: -2px;
+            animation: b 1s steps(2) infinite; }
+  @keyframes b { 50% { opacity: 0 } }
+  .stats { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);
+           font-size: 12px; color: var(--muted); display: flex;
+           gap: 14px; flex-wrap: wrap; }
+  .stats b { color: var(--text); font-weight: 600; }
+  .degraded { color: var(--warn); font-size: 12px; margin-top: 6px; }
+  .error { color: var(--err); font-size: 13px; margin-top: 6px; }
+
+  footer { display: flex; gap: 8px; align-items: flex-end; }
+  textarea { flex: 1; resize: none; height: 62px; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>流式多模型对话</h1>
+    <span class="badge" :class="mode">{{ mode === 'mock' ? '本地 mock（不花钱）' : '真实调用' }}</span>
+    <span class="badge" v-if="session.turns">本次会话 ≈ ${{ session.cost.toFixed(4) }}</span>
+    <div class="spacer"></div>
+    <select v-model="model" :disabled="streaming">
+      <option v-for="m in models" :key="m.id" :value="m.id" :disabled="!m.available">
+        {{ m.label }}{{ m.available ? '' : '（未配置 Key）' }}
+      </option>
+    </select>
+    <button @click="clear" :disabled="streaming">清空</button>
+  </header>
+
+  <div class="controls">
+    <label>temperature
+      <input type="range" min="0" max="2" step="0.1" v-model.number="temperature" :disabled="streaming" />
+      <b style="color:var(--text)">{{ temperature.toFixed(1) }}</b>
+    </label>
+    <span>·</span>
+    <label><input type="checkbox" v-model="autoScroll" /> 自动滚动</label>
+    <span v-if="ttftMs">· 首 token <b style="color:var(--text)">{{ ttftMs }}ms</b></span>
+  </div>
+
+  <div id="log" ref="logEl">
+    <div v-if="!messages.length" class="msg assistant" style="color:var(--muted)">
+      还没有对话。输入一条消息开始 —— 后端会按 SSE 逐字把回复推过来。<br /><br />
+      可以试：<b>用一句话解释什么是向量</b>
+    </div>
+
+    <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
+      <div class="role">
+        <span>{{ m.role === 'user' ? '你' : (m.model || model) }}</span>
+        <span v-if="m.degraded" class="degraded">（已降级）</span>
+      </div>
+      <div>{{ m.content }}<span v-if="m.streaming" class="cursor"></span></div>
+
+      <div v-if="m.error" class="error">⚠ {{ m.error }}</div>
+      <div v-if="m.degraded" class="degraded">主模型未在时限内响应，已自动切换到 {{ m.model }}</div>
+
+      <div v-if="m.stats" class="stats">
+        <span>in <b>{{ m.stats.usage.in_tokens }}</b></span>
+        <span>out <b>{{ m.stats.usage.out_tokens }}</b></span>
+        <span>{{ m.stats.usage.estimated ? '估算' : '实测' }}</span>
+        <span>成本 <b>${{ m.stats.cost.usd.toFixed(5) }}</b>
+              <span v-if="m.stats.cost.cny">（¥{{ m.stats.cost.cny.toFixed(3) }}）</span></span>
+        <span>TTFT <b>{{ (m.stats.ttft_s * 1000).toFixed(0) }}ms</b></span>
+        <span>总 <b>{{ m.stats.elapsed_s.toFixed(2) }}s</b></span>
+        <span v-if="m.stats.finish_reason">{{ m.stats.finish_reason }}</span>
+      </div>
+
+      <div v-if="!m.streaming && m.role === 'assistant' && m.content" class="stats">
+        <button @click="regenerate(i)" :disabled="streaming">重新生成</button>
+        <button @click="copy(m.content)">复制</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div style="flex:1">
+      <textarea v-model="draft" :disabled="streaming"
+        placeholder="输入消息，Enter 发送 / Shift+Enter 换行"
+        @keydown.enter.exact.prevent="send()"></textarea>
+      <div class="hint">
+        请求进行中时按 <b>停止</b> → 前端 abort + 后端收到断开并关闭上游连接（不残留后台请求）
+      </div>
+    </div>
+    <button v-if="!streaming" @click="send()" :disabled="!draft.trim() || !model">发送</button>
+    <button v-else class="danger" @click="stop()">停止</button>
+  </footer>
+</div>
+
+<script>
+const { createApp, ref, reactive, nextTick, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const models = ref([]);
+    const model = ref('');
+    const mode = ref('live');
+    const temperature = ref(0.7);
+    const draft = ref('');
+    const messages = ref([]);
+    const streaming = ref(false);
+    const autoScroll = ref(true);
+    const ttftMs = ref(0);
+    const logEl = ref(null);
+    const session = reactive({ turns: 0, cost: 0 });
+
+    let controller = null;   // AbortController：中断的唯一正确做法
+
+    // ------------------------------------------------------------------
+    // SSE 解析：本项目最核心的 20 行
+    // ------------------------------------------------------------------
+    // 为什么不能简单 split('\n\n')：
+    //   TCP 是字节流，一个 chunk 可能在任意位置被切开 —— 半条消息、半个中文字符、
+    //   半个 JSON 都可能。必须维护一个 buffer，按"消息分隔符"逐步切分，
+    //   把不完整的尾巴留在 buffer 里等下一块。
+    async function* parseSSE(response) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');   // 注意 streaming 解码：多字节字符跨 chunk 时靠它
+      let buffer = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // 一条 SSE 消息以空行结束
+          let sep;
+          while ((sep = buffer.indexOf('\n\n')) !== -1) {
+            const raw = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            const evt = parseEvent(raw);
+            if (evt) yield evt;
+          }
+        }
+        // 收尾：有些服务端最后一条消息不带结尾空行
+        const tail = parseEvent(buffer);
+        if (tail) yield tail;
+      } finally {
+        reader.releaseLock?.();
+      }
+    }
+
+    function parseEvent(raw) {
+      let event = 'message';
+      const dataLines = [];
+      for (const line of raw.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
+        // ':' 开头的是注释（心跳），忽略
+      }
+      if (!dataLines.length) return null;
+      const data = dataLines.join('\n');
+      try { return { event, data: JSON.parse(data) }; }
+      catch { return { event, data }; }
+    }
+
+    // ------------------------------------------------------------------
+    // 发送
+    // ------------------------------------------------------------------
+    async function callApi(history) {
+      controller = new AbortController();
+      streaming.value = true;
+      ttftMs.value = 0;
+
+      // 占位的助手消息，边收边往里写
+      const reply = reactive({
+        role: 'assistant', content: '', streaming: true,
+        model: model.value, degraded: false, stats: null, error: '',
+      });
+      messages.value.push(reply);
+      await scrollToEnd();
+
+      const started = performance.now();
+      let firstChunkAt = 0;
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: model.value,
+            messages: history.map(m => ({ role: m.role, content: m.content })),
+            temperature: temperature.value,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        }
+
+        for await (const { event, data } of parseSSE(response)) {
+          if (event === 'meta') {
+            reply.model = data.model;
+            reply.degraded = !!data.degraded;
+          } else if (event === 'delta') {
+            if (!firstChunkAt) {
+              firstChunkAt = performance.now();
+              ttftMs.value = Math.round(firstChunkAt - started);
+            }
+            reply.content += data.text;
+            if (autoScroll.value) await scrollToEnd();
+          } else if (event === 'done') {
+            reply.stats = data;
+            reply.model = data.model;
+            reply.degraded = !!data.degraded;
+            session.turns += 1;
+            session.cost += data.cost?.usd || 0;
+          } else if (event === 'error') {
+            reply.error = data.message;
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          // 用户主动停止：保留已生成的部分，这是"可中断"的正确语义
+          reply.content += reply.content ? '\n\n[已停止]' : '[已停止]';
+        } else {
+          reply.error = String(err.message || err);
+        }
+      } finally {
+        reply.streaming = false;
+        streaming.value = false;
+        controller = null;
+        await scrollToEnd();
+      }
+    }
+
+    async function send() {
+      const text = draft.value.trim();
+      if (!text || streaming.value) return;
+      draft.value = '';
+      messages.value.push({ role: 'user', content: text });
+      // 传给后端的历史要排除刚 push 的占位助手消息 —— 在 callApi 里 push 之前先取快照
+      const history = messages.value.map(m => ({ role: m.role, content: m.content }));
+      await callApi(history);
+    }
+
+    async function regenerate(index) {
+      if (streaming.value) return;
+      // 找到这条助手消息之前的用户消息，丢掉它之后的全部内容重跑
+      const cutoff = messages.value.slice(0, index)
+        .map((m, i) => ({ ...m, i }))
+        .filter(m => m.role === 'user')
+        .pop();
+      if (!cutoff) return;
+      const history = messages.value.slice(0, cutoff.i + 1)
+        .map(m => ({ role: m.role, content: m.content }));
+      messages.value = messages.value.slice(0, cutoff.i + 1);
+      await callApi(history);
+    }
+
+    function stop() {
+      controller?.abort();
+    }
+
+    function clear() {
+      if (streaming.value) return;
+      messages.value = [];
+      session.turns = 0;
+      session.cost = 0;
+      ttftMs.value = 0;
+    }
+
+    async function copy(text) {
+      try { await navigator.clipboard.writeText(text); } catch { /* 忽略 */ }
+    }
+
+    async function scrollToEnd() {
+      await nextTick();
+      const el = logEl.value;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+
+    onMounted(async () => {
+      try {
+        const res = await fetch('/api/models');
+        const info = await res.json();
+        mode.value = info.mode;
+        models.value = info.models;
+        const firstUsable = info.models.find(m => m.available) || info.models[0];
+        model.value = firstUsable?.id || '';
+      } catch (err) {
+        mode.value = 'live';
+      }
+    });
+
+    return {
+      models, model, mode, temperature, draft, messages, streaming, autoScroll,
+      ttftMs, logEl, session,
+      send, stop, clear, regenerate, copy,
+    };
+  },
+}).mount('#app');
+</script>
+</body>
+</html>

@@ -13,6 +13,9 @@ scratch/
 tmp/
 *.tmp
 
+# ---------- 运行日志（run.ps1 / verify_e2e.py 产生） ----------
+logs/
+
 # ---------- Python ----------
 __pycache__/
 *.py[cod]
