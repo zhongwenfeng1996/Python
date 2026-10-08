@@ -1,0 +1,4 @@
+{"id": "smoke-01", "question": "用一句话解释什么是向量", "assert": {"keywords": ["向量"], "min_chars": 10}, "note": "最基本通路：能返回、且提到主题"}
+{"id": "smoke-02", "question": "什么是 RAG？", "assert": {"min_chars": 5}, "note": "只验长度，不验内容 —— 冒烟测试不关心答得对不对"}
+{"id": "smoke-03", "question": "你好", "assert": {"min_chars": 1}, "note": "空输入边界"}
+{"id": "smoke-04", "question": "请用 JSON 输出：{\"name\": \"张三\", \"age\": 30}", "assert": {"min_chars": 1}, "note": "结构化输出的冒烟位"}

@@ -99,10 +99,80 @@ G:\转型\.venv\Scripts\python -m uvicorn main:app --port 8000
 
 ```powershell
 Set-Location G:\转型\ai-lab\projects\project1-stream-chat
-G:\转型\.venv\Scripts\python -m pytest
+& G:\转型\.venv\Scripts\python -m pytest
 ```
 
 测试会自己起 mock 上游和被测应用（真进程 + 真 HTTP），不需要手动准备任何服务。
+当前：**28 passed**（13 条 API 验收 + 15 条评估框架自测）。
+
+---
+
+## 评估（`make eval` 的雏形）
+
+评估是 LLM 应用和普通后端最本质的区别 —— 普通后端"跑通就算对"，
+LLM 应用必须回答"**对了多少**"。所以从项目一就开始建这套东西，
+而不是等到 W7 有了 RAG 才临时补。
+
+```powershell
+.\eval.ps1 smoke                    # 离线冒烟（不需要 Key，CI 用这个）
+.\eval.ps1 stability -Repeat 5      # 稳定性：同一问题问 5 次，答案一致吗
+.\eval.ps1 jitter                   # 对照实验：故意让上游不稳定，验证指标会报警
+.\eval.ps1 gates -FailUnder 80 -StabilityUnder 90    # 带门禁（CI 拦截用）
+.\eval.ps1 full -Model qwen-plus -Repeat 3           # 真实模型评估（需配 Key）
+.\eval.ps1 report                   # 看上一次的报告 JSON
+```
+
+> **Windows 上没有 `make`**，所以入口是 `eval.ps1` 而不是 Makefile。
+> 计划里写的 `make eval`，在这里就是 `.\eval.ps1 gates`。
+
+### 评估框架的四条设计原则
+
+1. **断言必须客观可判定。** 不用 LLM 打分（那是 W7 有 Ragas 之后的事）。
+   只做机械可判定的事：关键词命中、JSON 可解析、长度范围、是否拒答、是否含禁用词。
+   **不能自动判定的东西就不放进评估集** —— 放进去只会得到一个你自己都不信的数字。
+2. **必须能离线跑。** 没 Key 时用仓库的 mock 上游跑冒烟集，CI 里能跑、面试能现场演示。
+3. **评估集是资产，代码不是。** 用例写在 JSONL 里，加用例接近零成本。
+4. **报告要能直接贴进简历。** 同时打印到终端并写 `eval/report.json`。
+
+### 一个必须做的对照实验
+
+`.\eval.ps1 jitter` 是**给自己找茬**用的：它让 mock 上游每次回复都不同，
+如果"稳定性"指标是真的，它必须报警。实测结果：
+
+| 上游 | 稳定性 |
+|---|---|
+| 默认（按 temperature 确定性回复） | **100.0%** |
+| `--jitter`（每次回复都不同） | **0.0%** ← 门禁正确拦截，exit 1 |
+
+**为什么值得花时间做这个**：一个恒为 100% 的指标比没有指标更危险 ——
+它会让你以为"我的系统很稳定"，其实只是**你的断言测不到问题**。
+评估代码本身也是代码，也需要被证伪。
+
+### 用例集
+
+| 文件 | 用途 | 断言强度 |
+|---|---|---|
+| `eval/cases.smoke.jsonl` | 离线冒烟，验证评估框架能跑 | 只验长度/主题，**故意很松** |
+| `eval/cases.jsonl` | 真实模型评估，数字可写进简历 | 关键词 + JSON + 拒答 + 注入防护 |
+
+`cases.jsonl` 刻意覆盖了四类风险，而不是只有 happy path：
+结构化输出（`json_valid`）、幻觉与拒答（`refusal_or_hedge`）、
+提示词注入（`forbidden_keywords`）、以及口径消歧（项目三的考点提前在对话层验证）。
+
+### 实测报告（离线冒烟 · 4 用例 × 3 次）
+
+| 指标 | 值 |
+|---|---|
+| 断言通过率 | 100.0%（12/12） |
+| 答案稳定性 | 100.0% |
+| TTFT p50 / p95 | 238.9 / 311.6 ms |
+| 端到端 p50 / p95 | 242.9 / 315.6 ms |
+| 单次成本（均值） | $0.000029 |
+| 降级次数 | 0 |
+
+> 这组数字来自**本地 mock**，只证明"评估链路通畅"，不代表模型能力。
+> 真实数字要配 Key 跑 `.\eval.ps1 full`，然后替换本表 ——
+> 面试时被问"你的评估是怎么做的"，能当场跑出来比背数字有用得多。
 
 ---
 
@@ -118,13 +188,22 @@ project1-stream-chat/
 │   └── .env.example
 ├── frontend/
 │   └── index.html       # Vue 3 + 手写 SSE 解析（零构建）
+├── eval/                # 评估（make eval 的雏形）
+│   ├── run_eval.py      #   评估执行器：跑用例 → 断言 → 出报告
+│   ├── cases.smoke.jsonl#   离线冒烟用例（断言故意松）
+│   ├── cases.jsonl      #   真实评估用例（含幻觉/注入/结构化输出）
+│   └── report.json      #   最近一次的报告（机器可读）
 ├── tests/
 │   ├── conftest.py      # 起 mock 上游 + 被测应用的夹具
 │   ├── mock_runner.py   # 启停 mock 服务
-│   └── test_api.py      # 13 条验收断言
+│   ├── test_api.py      # 13 条验收断言
+│   └── test_eval.py     # 15 条评估框架自测（断言两侧都要对）
 ├── docs/
 │   └── ADR.md           # 6 条架构决策记录（面试深挖点）
-├── run.ps1              # Windows 一键启动
+├── run.ps1              # 一键启动
+├── eval.ps1             # 评估入口（Windows 版 make eval）
+├── requirements.txt
+├── pip.ini              # 国内镜像配置（注意：非 ASCII 路径下不可用，见 README）
 ├── pytest.ini
 └── README.md
 ```

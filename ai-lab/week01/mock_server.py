@@ -21,11 +21,58 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 REPLY = "这是一段来自本地 mock 服务的回复，用于验证你的代码是否正确解析了响应。"
+
+# 温度敏感回复：模拟"同一个问题在不同 temperature 下回答不同"。
+#
+# 为什么 mock 需要这个：评估里有一条重要指标是**输出的稳定性**（面试第一题就是
+# "同一个问题问两次答案不同，是 bug 吗"）。如果 mock 永远返回同一句话，
+# 那条指标测出来永远是 100%，等于没测。
+#
+# 设计成**确定性**的（同一 temperature → 同一答案），而不是随机：
+#   评估脚本要可复现。用 random 会让"这次 72%、下次 68%"，
+#   你分不清是代码变了还是运气变了 —— 那就不是评估。
+#   真实模型的随机性本来就是"按 temperature 采样"，这里用温度分档近似它。
+TEMP_REPLIES = {
+    0: "确定性回答：向量是数学对象，表示空间中的方向和大小。",
+    1: "向量就是带方向和大小的量，可以理解成一支箭头。",
+    2: "向量嘛，你可以想象成一支有长度有方向的箭；在不同语境下含义会变，"
+       "线性代数里它是空间中的元素，机器学习里它是特征的数值表示。",
+}
+
+
+def reply_for(payload: dict) -> str:
+    """按 temperature 选回复，让"稳定性"可被测量。"""
+    try:
+        temp = float(payload.get("temperature", 0.7))
+    except (TypeError, ValueError):
+        temp = 0.7
+    if temp <= 0.1:
+        return TEMP_REPLIES[0]
+    if temp <= 0.8:
+        return TEMP_REPLIES[1]
+    return TEMP_REPLIES[2]
+
+
+# 抖动模式：每次回复追加一个随机串，模拟"真实模型每次回答都不一样"。
+#
+# 为什么需要它：评估脚本里有个"答案稳定性"指标。默认的 mock 是**确定性**的
+# （同一 temperature 永远同一答案），于是稳定性永远 100% —— 这个指标就无法证伪。
+# 一个测不出问题的指标等于没有指标。开着 --jitter 跑一次，
+# 稳定性应该明显掉下来；如果没掉，说明指标写错了。
+JITTER = False
+
+
+def final_reply(payload: dict) -> str:
+    text = reply_for(payload)
+    if JITTER:
+        text += f"（随机标记 {random.randint(1000, 9999)}）"
+    return text
 
 
 class Stats:
@@ -91,10 +138,11 @@ class Handler(BaseHTTPRequestHandler):
         prompt_tokens = sum(
             len(m.get("content", "")) for m in payload.get("messages", [])
         ) or 1
+        reply = final_reply(payload)
         return {
             "prompt_tokens": prompt_tokens,
-            "completion_tokens": len(REPLY),
-            "total_tokens": prompt_tokens + len(REPLY),
+            "completion_tokens": len(reply),
+            "total_tokens": prompt_tokens + len(reply),
         }
 
     # ---------- 测试辅助端点 ----------
@@ -158,7 +206,7 @@ class Handler(BaseHTTPRequestHandler):
                 "model": model,
                 "choices": [{
                     "index": 0,
-                    "message": {"role": "assistant", "content": REPLY},
+                    "message": {"role": "assistant", "content": final_reply(payload)},
                     "finish_reason": "stop",
                 }],
                 "usage": self._usage(payload),
@@ -184,7 +232,8 @@ class Handler(BaseHTTPRequestHandler):
 
         # 故意让首个 token 慢一点，好让 TTFT 统计看得出差别
         time.sleep(self.slow_first_token)
-        for ch in REPLY:
+        reply = final_reply(payload)
+        for ch in reply:
             try:
                 send({"choices": [{"delta": {"content": ch}, "index": 0}]})
             except (BrokenPipeError, ConnectionResetError, OSError):
@@ -212,11 +261,16 @@ def main() -> None:
     parser.add_argument("--slow-first-token", type=float, default=0.4)
     parser.add_argument("--fail-first", type=int, default=0,
                         help="让前 N 个请求返回 500（用于测试自动降级）")
+    parser.add_argument("--jitter", action="store_true",
+                        help="每次回复追加随机串，模拟真实模型的非确定性"
+                             "（用于验证评估的'稳定性'指标真的能测出问题）")
     args = parser.parse_args()
 
     Handler.delay = args.delay
     Handler.slow_first_token = args.slow_first_token
     STATS.fail_first = args.fail_first
+    global JITTER
+    JITTER = args.jitter
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.daemon_threads = True
