@@ -1,10 +1,9 @@
 # Windows 上手指南（PowerShell 补充版）
 
-> **这是 macOS/Linux 文档的 Windows 补充版，不是替代品。** 本仓库其他文档（根 `README.md`、
-> `week01/README.md`、`python_basics/README.md`、`python_basics/js_to_python.md`、
-> `scripts/load_to_postgres.sh`）里的 `python3` / `export` / `source` / `cp` / `./xxx.sh`
-> **都不是 PowerShell 语法，照抄会报错** —— 先用 §1 对照表替换，再回原文档继续。
-> 适用 Windows 10/11 + Windows PowerShell 5.1 或 7，仓库根 `G:\转型`，命令可直接复制运行。
+> **这是 macOS/Linux 文档的 Windows 补充版。** 本仓库其他文档（根 `README.md`、`week01/README.md`、
+> `python_basics/README.md`、`python_basics/js_to_python.md`、`scripts/load_to_postgres.sh`）里的
+> `python3` / `export` / `source` / `cp` / `./xxx.sh` **都不是 PowerShell 语法，照抄会报错** ——
+> 先用 §1 对照表替换，再回原文档继续。仓库根 `G:\转型`，命令可直接复制运行。
 
 ## 0. 先确认终端，再记住三条铁律
 
@@ -12,11 +11,11 @@
 $PSVersionTable.PSVersion   # 5.1.x = 系统自带；7.x = PowerShell 7
 ```
 
-系统自带的 **5.1** 能用，但不支持 `&&`、默认编码是 GBK、写文件默认带 BOM；
-建议装 PowerShell 7：`winget install Microsoft.PowerShell`。
+系统自带的 **5.1** 能用，但不支持 `&&`、默认编码是 GBK、写文件默认带 BOM；建议装 PowerShell 7：
+`winget install Microsoft.PowerShell`。
 
 1. **不要用 `&&` 连接命令**（5.1 会报"不是有效的语句分隔符"），用换行或 `;`。
-2. **多行续行用反引号**，它必须是行尾最后一个字符，后面**不能有空格**。
+2. **多行续行用反引号**，它必须是行尾最后一个字符，后面不能有空格。
 3. **`<` `>` 是 PowerShell 保留字符**：`<你的用户名>` 这类占位符不要连尖括号一起复制。
 
 ---
@@ -32,37 +31,29 @@ $PSVersionTable.PSVersion   # 5.1.x = 系统自带；7.x = PowerShell 7
 | `pip install httpx` | `python -m pip install httpx` | 保证装进当前 venv |
 | `export KEY=value` | `$env:KEY = "value"` | 只对**当前终端窗口**有效 |
 | `KEY=value python a.py` | 拆两行：先 `$env:KEY="value"`，再 `py -3 a.py` | PowerShell **没有**命令前置变量语法 |
-| `echo $KEY` | `$env:KEY` | |
 | `which python` / `where python` | `Get-Command python` / `where.exe python` | `where` 是 `Where-Object` 别名，**必须写 `where.exe`** |
 | `cp a b` | `Copy-Item a b` | `cp -r` 会因参数名有歧义而失败 |
-| `mkdir -p a/b` | `New-Item -ItemType Directory -Force a\b` | |
 | `rm -rf dir` | `Remove-Item -Recurse -Force dir` | `rm -rf` 不能照抄 |
 | `ls` / `cat f` | `Get-ChildItem` / `Get-Content f` | `ls`、`cat` 是别名，简单场景能跑 |
-| `grep -r "x" .` | `Get-ChildItem -Recurse -File \| Select-String "x"` | |
 | `cmd &`（后台运行） | `Start-Job { cmd }` 或 `Start-Process cmd` | PowerShell 的 `&` 是**调用运算符**，不是后台 |
 | `cmd1 && cmd2` | `cmd1; cmd2`（PS 7 才支持 `&&`） | |
 | `./script.sh` | `bash script.sh`（Git Bash），或改写成 `.ps1` | 见 §5.3 |
 | `curl -H ... -d ...` | `curl.exe -H ... -d ...` | PS 5.1 的 `curl` 是 `Invoke-WebRequest`，参数完全不同 |
 
-> W0 验收项"用 `curl` 调通 `/chat/completions`"必须写 `curl.exe`，否则用的是 `Invoke-WebRequest`，
-> `-H` / `-d` 会直接报参数错误；`-N` 关掉缓冲才能看到逐字流式：
+W0 验收项"用 `curl` 调通 `/chat/completions`"必须写 `curl.exe`（PS 5.1 的 `curl` 是 `Invoke-WebRequest`，
+`-H`/`-d` 会报参数错误）；`-N` 关掉缓冲才能看到逐字流式，中文乱码就把 JSON 存成文件用 `-d "@body.json"`：
 
 ```powershell
 $body = '{"model":"deepseek-chat","stream":true,"messages":[{"role":"user","content":"你好"}]}'
-curl.exe -N -s https://api.deepseek.com/v1/chat/completions `
-  -H "Content-Type: application/json" `
-  -H "Authorization: Bearer $env:OPENAI_API_KEY" `
-  -d $body
+curl.exe -N -s https://api.deepseek.com/v1/chat/completions -H "Content-Type: application/json" -H "Authorization: Bearer $env:OPENAI_API_KEY" -d $body
 ```
-
-中文在请求里乱码就先把 `$body` 存成文件再 `-d "@body.json"`（PS 5.1 传中文参数有编码摩擦）。
 
 ---
 
 ## 2. 一次性环境搭建（按顺序执行）
 
 ```powershell
-# 2.1 装 Python 3.11+，然后验证（-0 是数字零，不是字母 O）
+# 2.1 装 Python 3.11+ 并验证（-0 是数字零，不是字母 O）
 winget install Python.Python.3.12
 py -3 --version       # 期望 3.11+
 py -0p                # 列出本机所有 Python 及路径
@@ -70,9 +61,9 @@ where.exe python      # 看 PATH 解析到哪个 python.exe
 ```
 
 - 用**官网安装包**装的话，第一屏务必勾选 **Add python.exe to PATH** 和 **py launcher**；winget 装完若
-  `python` 仍找不到，**关掉终端重开**（PATH 变更不会注入已开的窗口），仍不行就重跑官方安装包补勾选。
+  `python` 仍找不到，**关掉终端重开**（PATH 变更不会注入已开的窗口），仍不行就重跑安装包补勾选。
   包 ID 与版本以 <https://www.python.org/downloads/windows/> 和 `winget search Python.Python` 为准。
-- `py` 是 Windows 的 **Python 启动器**（PEP 397），`py -3` = 最新 Python 3，比 `python` 更可靠（不受 PATH 顺序影响）。
+- `py` 是 Windows 的 **Python 启动器**（PEP 397），`py -3` = 最新 Python 3，比 `python` 更可靠。
 
 ```powershell
 # 2.2 建虚拟环境并激活：提示符前出现 (.venv) 才算成功
@@ -86,20 +77,16 @@ py -3 -m venv .venv
 # 2.3 装依赖
 python -m pip install --upgrade pip
 python -m pip install httpx pydantic fastapi "uvicorn[standard]" pytest
-python -m pip list
 
 # 2.4 环境自检
 py -3 python_basics\check_env.py
 ```
 
-`"uvicorn[standard]"` 的**方括号在 PowerShell 里是通配符，必须加引号**。
-**每个新开的终端都要重新激活**：忘了激活不会报错，只会把包装到全局（见 §6）。
-`check_env.py` 里的修复提示仍是 macOS 写法（`export ...`、`python3 ...`），按 §1 替换即可；
-它的 ✅/❌ 是 ANSI 字符，老式控制台可能显示成 `←[32m`，换 Windows Terminal 就正常
-（`winget install Microsoft.WindowsTerminal`）。
-计划 §2 还要求 `uv` 或 `poetry` 二选一（本项目非必需）：最省事是 `python -m pip install uv`，
-之后 2.2–2.3 可换成 `uv venv` + `uv pip install httpx pydantic fastapi uvicorn pytest`；
-官方脚本见 <https://docs.astral.sh/uv/>。
+`"uvicorn[standard]"` 的**方括号在 PowerShell 里是通配符，必须加引号**。**每个新开的终端都要重新激活**：
+忘了激活不会报错，只会把包装到全局（见 §6）。`check_env.py` 的修复提示仍是 macOS 写法
+（`export ...`、`python3 ...`），按 §1 替换即可；它的 ✅/❌ 是 ANSI 字符，老式控制台可能显示成 `←[32m`，
+换 Windows Terminal 就正常。计划 §2 还要求 `uv` 或 `poetry` 二选一（本项目非必需），最省事是
+`python -m pip install uv`，之后 2.2–2.3 可换成 `uv venv` + `uv pip install ...`（见 <https://docs.astral.sh/uv/>）。
 
 ---
 
@@ -123,8 +110,7 @@ py -3 mock_server.py
 
 # 终端 2：先设变量，再运行
 Set-Location G:\转型\ai-lab\python_basics
-$env:OPENAI_BASE_URL = "http://127.0.0.1:8765/v1"
-$env:OPENAI_API_KEY  = "test"
+$env:OPENAI_BASE_URL = "http://127.0.0.1:8765/v1"; $env:OPENAI_API_KEY = "test"
 py -3 01_hello_llm.py
 py -3 02_stream_chat.py
 ```
@@ -135,9 +121,8 @@ py -3 02_stream_chat.py
 wt -w 0 nt -d G:\转型\ai-lab\week01     # Windows Terminal 新标签页，并进入该目录
 ```
 
-没装 Windows Terminal 就 `winget install Microsoft.WindowsTerminal`，或直接再开一个 PowerShell 窗口，
-或在 VS Code 里按 `Ctrl+Shift+5` 分屏。**`$env:` 变量是"每个终端进程一份"**：
-终端 1 设过的变量，终端 2 看不到，必须各自设。
+没装 Windows Terminal 就 `winget install Microsoft.WindowsTerminal`，或再开一个 PowerShell 窗口、在 VS Code
+里按 `Ctrl+Shift+5` 分屏。**`$env:` 变量是"每个终端进程一份"**：终端 1 设过的，终端 2 看不到，必须各自设。
 
 ```powershell
 # ---- 方式 A：两个终端 + 临时环境变量（原文档的写法）----
@@ -165,25 +150,18 @@ py -3 chat.py --model gpt-4o-mini --temperature 0.3   # 会话内命令：/exit 
 ```
 
 `chat.py` 的优先级是 **命令行参数 > 环境变量 > `.env`**，所以当前终端设的 `$env:OPENAI_BASE_URL`
-能覆盖 `.env`，随时切回 mock。注意**用 `Copy-Item`（保留原始字节）生成 `.env`，
-不要用 `Get-Content | Set-Content` 重建**：PS 5.1 的 `Set-Content -Encoding UTF8` 会写 BOM，
+能覆盖 `.env`，随时切回 mock。注意**用 `Copy-Item`（保留原始字节）生成 `.env`，不要用
+`Get-Content | Set-Content` 重建**：PS 5.1 的 `Set-Content -Encoding UTF8` 会写 BOM，
 `OPENAI_API_KEY` 变成 `\ufeffOPENAI_API_KEY`，表现为"明明填了 key 却提示缺少 API Key"
-（脚本里的 `strip()` 不会去掉 BOM）。
-
-数据生成器（原文档第一条命令，`python3` → `py -3`）：
-
-```powershell
-Set-Location G:\转型\ai-lab
-py -3 scripts\generate_saas_data.py --users 1200 --events 9000 --tenants 12
-Get-ChildItem data\out          # 生成 5 个 CSV
-```
+（脚本里的 `strip()` 不会去掉 BOM）。数据生成器同理，只需换解释器：
+`py -3 scripts\generate_saas_data.py --users 1200 --events 9000 --tenants 12`。
 
 ---
 
 ## 4. Git 与 GitHub
 
 **仓库根是 `G:\转型`（不是 `ai-lab`），已 `git init` 并完成首次提交，分支 `main`。**
-学习计划那份 Markdown 就在仓库根，和代码同仓库最方便，所以下面的 git 命令都在 `G:\转型` 下执行。
+学习计划那份 Markdown 就在仓库根，和代码同仓库最方便，所以 git 命令都在 `G:\转型` 下执行。
 
 ```powershell
 # 4.1 初次配置（只需一次；换新机器时才需要）
@@ -193,9 +171,8 @@ git config --global init.defaultBranch main
 git config --global core.longpaths true      # 防 Windows 260 字符路径限制
 git config --global --list                   # 检查
 
-# 4.2 若哪天要重新建仓库（当前已建好，仅在 git status 报 not a git repository 时才用）
+# 4.2 首次提交（仓库已建好；仅当 git status 报 not a git repository 时才要 git init）
 Set-Location G:\转型
-git init
 git add .
 git commit -m "W0: 初始化学习仓库"
 
@@ -209,8 +186,9 @@ git push -u origin main
 推送认证用 Git for Windows 自带的 **Git Credential Manager**（首次 push 弹浏览器登录），
 或 `winget install GitHub.cli` 后 `gh auth login`。
 
-`ai-lab/.gitignore` **已存在且已写好**：忽略 `data/out/*.csv`（可重建）、`.venv/`、`__pycache__/`、
-`.env`（密钥）、`*.sqlite3` 和 macOS 残留的 `.DS_Store` —— 所以 `git add .` 不会把密钥提交上去。
+**`.gitignore` 已就位**（仓库根一份、`ai-lab/` 一份）：忽略 `ai-lab/data/out/*.csv`（可重建）、
+`.venv/`、`__pycache__/`、`.env`（密钥，但保留 `.env.example`）、`*.sqlite3`、`.DS_Store` ——
+所以 `git add .` 不会把密钥提交上去。
 
 ### 4.4 CRLF 换行问题（Windows 必看）
 
@@ -228,9 +206,8 @@ git config --global core.autocrlf input     # 本仓库推荐
 | **`input`** | CRLF → LF | 原样 LF | **本仓库**：有 `.sh`，以后要进 Docker/Linux |
 | `false` | 不动 | 不动 | 配合 `.gitattributes` 精细控制 |
 
-已经乱了就重新规范化：`git add --renormalize .` 再提交。
-**本仓库根已自带 `.gitattributes`（`* text=auto eol=lf`，并单独钉死 `*.sh` 用 LF、
-`*.ps1`/`*.bat`/`*.cmd` 用 CRLF）**，它随仓库走、换机器不失效；和 `core.autocrlf` 同时存在时以它为准。
+已经乱了就 `git add --renormalize .` 后重新提交。**仓库根已自带 `.gitattributes`**（`* text=auto eol=lf`，
+并单独钉死 `*.sh` 用 LF、`*.ps1`/`*.bat`/`*.cmd` 用 CRLF），它随仓库走、换机器不失效，与 `core.autocrlf` 冲突时以它为准。
 
 ---
 
@@ -241,7 +218,6 @@ git config --global core.autocrlf input     # 本仓库推荐
 ```powershell
 winget install Docker.DockerDesktop
 # 装完启动 Docker Desktop，等托盘图标变绿，别只输命令就往下走
-docker --version
 docker run -d --name saas-pg `
   -p 5432:5432 `
   -e POSTGRES_PASSWORD=postgres `
@@ -251,17 +227,17 @@ docker run -d --name saas-pg `
 
 docker ps     # 确认容器在跑
 docker exec -i saas-pg psql -U postgres -d saas_lab -c "CREATE EXTENSION IF NOT EXISTS vector;"
-docker exec -i saas-pg psql -U postgres -d saas_lab -c "SELECT extversion FROM pg_extension WHERE extname='vector';"
 ```
 
 - 镜像 tag 与可用版本以 <https://github.com/pgvector/pgvector> 的 README 为准（`pg16`/`pg17` 均有）。
-- 运维：`docker stop saas-pg` / `docker start saas-pg` / `docker rm -f saas-pg`（删除即清库）。
-- 5432 被占用就改 `-p 5433:5432`；Docker 方案下宿主机**没有 `psql`**，`load_to_postgres.sh` 不能直接用 → 见 §5.3。
+- 运维 `docker stop saas-pg` / `docker start saas-pg` / `docker rm -f saas-pg`（删除即清库）；
+  5432 被占用就改 `-p 5433:5432`。
+- Docker 方案下宿主机**没有 `psql`**，`load_to_postgres.sh` 不能直接用 → 见 §5.3。
 
 ### 方案 B：原生安装（pgvector 要自己编译，不推荐）
 
 ```powershell
-winget search PostgreSQL      # 在结果里挑一个（常见如 PostgreSQL.PostgreSQL.16），ID 以你机器搜索结果为准
+winget search PostgreSQL      # 在结果里挑一个（常见如 PostgreSQL.PostgreSQL.16），ID 以搜索结果为准
 # 或用 EnterpriseDB 官方安装包，以 https://www.postgresql.org/download/windows/ 为准
 
 $env:Path += ";C:\Program Files\PostgreSQL\16\bin"   # 只对当前终端有效；永久生效在"系统属性→环境变量"里加
@@ -271,56 +247,47 @@ createdb -E UTF8 -T template0 --locale=C saas_lab
 psql -l                               # 确认 Encoding 是 UTF8
 ```
 
-不加 `$env:PGUSER` / `-U postgres` 会报 `FATAL: role "Administrator" does not exist` ——
-macOS 上 Homebrew 会把你的系统用户建成超级用户，所以那边的文档从不写 `-U`。
-中文 locale 的安装若 `template1` 不是 UTF8，导入 UTF-8 CSV 会报编码错误，故上面显式指定 `-E UTF8`。
-**pgvector 原生编译要 Visual Studio Build Tools + nmake，Windows 上很折腾，W5 请直接用方案 A。**
+不加 `$env:PGUSER` / `-U postgres` 会报 `FATAL: role "Administrator" does not exist`（macOS 上 Homebrew
+会把你的系统用户建成超级用户，所以那边的文档从不写 `-U`）。中文 locale 的安装若 `template1` 不是 UTF8，
+导入 UTF-8 CSV 会报编码错误，故上面显式指定 `-E UTF8`。**pgvector 原生编译要 Visual Studio Build Tools
++ nmake，Windows 上很折腾，W5 请直接用方案 A。**
 
 ### 5.3 `load_to_postgres.sh` 的 PowerShell 版
 
-bash 版就四件事：`createdb` → `psql -f data/schema.sql` → `TRUNCATE` → 按外键顺序 `\copy` 五个 CSV 并打印行数。
+bash 版就四件事：`createdb` → `psql -f data/schema.sql` → `TRUNCATE` → 按外键顺序 `\copy` 五个 CSV。
 
 ```powershell
 Set-Location G:\转型\ai-lab        # 在仓库根执行：\copy 的相对路径是相对 psql 的当前目录解析的
 $env:PGCLIENTENCODING = "UTF8"     # CSV 是 UTF-8，不设会因客户端编码不一致而报错
-$out = "data/out"
 
 psql -q -d saas_lab -f data/schema.sql
 psql -q -d saas_lab -c "TRUNCATE tenants, users, subscriptions, events, payments RESTART IDENTITY CASCADE;"
 foreach ($t in "tenants","users","subscriptions","events","payments") {
-  psql -q  -d saas_lab -c "\copy $t FROM '$out/$t.csv' WITH (FORMAT csv, HEADER true)"
+  psql -q  -d saas_lab -c "\copy $t FROM 'data/out/$t.csv' WITH (FORMAT csv, HEADER true)"
   psql -tA -d saas_lab -c "SELECT COUNT(*) FROM $t;"
 }
 ```
 
 **路径反斜杠是最大的坑**：psql 里 `\` 是转义字符，`'G:\转型\ai-lab\data\out\tenants.csv'` 会被解析坏，
 `\copy` 的路径**一律写正斜杠**（`'G:/转型/ai-lab/data/out/tenants.csv'`），或者像上面那样只用相对路径。
-若仍报"找不到文件"（Windows 中文路径 + psql 客户端编码的已知摩擦），就把 CSV 复制到纯 ASCII 路径
-（如 `C:\tmp\saas\`）再导。
+若仍报"找不到文件"（Windows 中文路径 + psql 客户端编码的已知摩擦），把 CSV 复制到纯 ASCII 路径再导。
 
 **Docker 起的库（方案 A）**：宿主机没 psql，把数据塞进容器，顺带绕开中文路径问题：
 
 ```powershell
-Set-Location G:\转型\ai-lab
 docker cp .\data\out saas-pg:/tmp/out
-docker exec -i saas-pg psql -U postgres -d saas_lab -c "TRUNCATE tenants, users, subscriptions, events, payments RESTART IDENTITY CASCADE;"
 foreach ($t in "tenants","users","subscriptions","events","payments") {
   docker exec -i saas-pg psql -U postgres -d saas_lab -c "\copy $t FROM '/tmp/out/$t.csv' WITH (FORMAT csv, HEADER true)"
-  docker exec -i saas-pg psql -U postgres -d saas_lab -tA -c "SELECT COUNT(*) FROM $t;"
 }
 ```
 
-想把上面这段留成可复用脚本：新建 `scripts\load_to_postgres.ps1`（本文档不替你创建该文件），
-开头加 `param([string]$Db = "saas_lab", [switch]$InDocker, [string]$Container = "saas-pg")`、
-`$ErrorActionPreference = "Stop"`，以及 `$OutputEncoding = [System.Text.Encoding]::UTF8`
+想把上面这段留成可复用脚本：新建 `scripts\load_to_postgres.ps1`（本文档不替你创建该文件），开头加
+`param([string]$Db = "saas_lab", [switch]$InDocker)` 和 `$OutputEncoding = [System.Text.Encoding]::UTF8`
 （PS 5.1 管道默认 ASCII，不设会毁掉中文），其余照抄上面的 `foreach`；被策略拦截时用
 `powershell -ExecutionPolicy Bypass -File .\scripts\load_to_postgres.ps1`。
 
 验证（原文档命令，注意不用 `python3`，且时间窗口固定不要用 `now()`）：
-
-```powershell
-psql -d saas_lab -c "SELECT COUNT(*) FROM events;"
-```
+`psql -d saas_lab -c "SELECT COUNT(*) FROM events;"`
 
 ---
 
@@ -334,15 +301,13 @@ psql -d saas_lab -c "SELECT COUNT(*) FROM events;"
 | 中文乱码 / 方块 | 控制台代码页不是 UTF-8 | `chcp 65001`；`[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`；`$env:PYTHONUTF8="1"`；用 Windows Terminal |
 | `UnicodeDecodeError: 'gbk' codec can't decode byte ...` | 读 UTF-8 文件时用了 GBK 默认编码 | 代码里显式 `encoding="utf-8"`；或 `$env:PYTHONUTF8 = "1"`（§7） |
 | `UnicodeEncodeError: 'gbk' codec can't encode character '\u2705'` | 输出被重定向到文件/管道时按 GBK 编码 | 同上，或 `py -3 -X utf8 script.py` |
-| `OSError: [WinError 10048]` / `Address already in use` | 端口被占用（8765 / 8000 / 5432 最常见） | `Get-NetTCPConnection -LocalPort 8765 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`；或换端口 `py -3 mock_server.py --port 8766` 并同步改 `OPENAI_BASE_URL` |
+| `OSError: [WinError 10048]` / `Address already in use` | 端口被占用（8765 / 8000 / 5432 最常见） | `Get-NetTCPConnection -LocalPort 8765 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`（或用 `netstat -ano \| Select-String ":8765"` 查到 PID）；或换端口 `py -3 mock_server.py --port 8766` 并同步改 `OPENAI_BASE_URL` |
 | `pip install` 成功但 `import httpx` 失败 | 装到全局了，脚本用的是另一个解释器 | 看提示符有没有 `(.venv)`；一律用 `python -m pip install`；`where.exe python`、`python -m pip -V` 确认路径都在 `.venv` 下 |
 | 第一行 key 读不到 / `SyntaxError: Non-UTF-8 code starting with '\xff'` | 文件存成了带 BOM 的 UTF-8 | 改存"UTF-8（无 BOM）"；`.env` 用 `Copy-Item` 生成 |
 | `标记"&&"不是此版本中的有效语句分隔符` | PS 5.1 不支持 `&&` | 改成 `;` 或换行，或升级 PowerShell 7 |
 | `参数名 -r 不明确` / `cp -r` 失败 | `cp` 是 `Copy-Item` 别名，参数不同 | `Copy-Item -Recurse`、`Remove-Item -Recurse -Force` |
 | `FATAL: role "Administrator" does not exist` | Windows 默认用户名不是 PG 超级用户 | 设 `$env:PGUSER="postgres"`（+ `$env:PGPASSWORD`）或加 `-U postgres` |
 | 多个 Python 打架 | PATH 里有多份 Python | `py -0p` 看清单，用 `py -3.12` 精确定位；`where.exe python` 看优先级 |
-
-端口占用的替代查法（结果最后一列是 PID）：`netstat -ano | Select-String ":8765"`
 
 ---
 
@@ -351,38 +316,23 @@ psql -d saas_lab -c "SELECT COUNT(*) FROM events;"
 Windows 的编码问题来自三层，**叠加**起来才难查：① 控制台代码页（中文 Windows 默认 936/GBK）；
 ② Python 的文本 I/O 默认用"本地编码"而不是 UTF-8；③ 换行 CRLF vs LF（见 §4.4）。
 
-```powershell
-# ① 控制台切 UTF-8（$OutputEncoding 决定 PowerShell 把文本管道给外部程序时用什么编码）
-chcp 65001
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-```
-
 **`PYTHONUTF8=1` 的作用**：打开 Python 的 **UTF-8 模式**（PEP 540，3.7+），让 `open()` 的默认编码、
 标准输入输出、`locale.getpreferredencoding()` 全部变 UTF-8，等于不用在每处都写 `encoding="utf-8"`：
 
 ```powershell
 $env:PYTHONUTF8 = "1"        # 只对当前终端有效；永久生效（需新开终端）：
 # [Environment]::SetEnvironmentVariable("PYTHONUTF8","1","User")
-
 py -3 -c "import locale,sys; print(sys.getfilesystemencoding(), locale.getpreferredencoding(False))"
 # 未设时中文 Windows 约等于：utf-8 cp936     设了之后：utf-8 utf-8
 ```
 
-**Python 3.15 之前 Windows 默认不是 UTF-8（PEP 686 才改成默认 UTF-8），会踩什么坑**：
+**Python 3.15 之前 Windows 默认不是 UTF-8（PEP 686 才改成默认 UTF-8）**，典型坑：不带 `encoding`
+写文件实际写出的是 GBK 字节（`py -3 -c "open('t.txt','w').write('中文')"`）；读别人用 UTF-8 存的文件
+直接抛 `UnicodeDecodeError: 'gbk' codec can't decode byte 0xe4 ...`。受害者集中在：读 CSV/JSON/`.md`、
+把提示词写进日志、`subprocess` 起别的程序，以及**把输出重定向到文件**（`py -3 a.py > out.txt`）时
+打印 emoji 或生僻字。
 
-```powershell
-# 不带 encoding 写文件：中文 Windows 上实际写出的是 GBK 字节
-py -3 -c "open('t.txt','w').write('中文')"
-# 读一份别人用 UTF-8 存的文件：直接抛 UnicodeDecodeError: 'gbk' codec can't decode byte 0xe4 ...
-py -3 -c "open('u8.txt').read()"
-```
-
-典型受害者：读 CSV/JSON/`.md`、把提示词写进日志、`subprocess` 起别的程序，
-以及**把输出重定向到文件**（`py -3 a.py > out.txt`）时打印 emoji 或生僻字。
-
-**结论**：本地设 `$env:PYTHONUTF8 = "1"`，同时代码里**该写 `encoding="utf-8"` 就写** ——
-后者才是让代码在 macOS/Linux 上同样正确的做法，`PYTHONUTF8=1` 只是本地兜底。
+**结论**：本地设 `$env:PYTHONUTF8 = "1"`，同时代码里**该写 `encoding="utf-8"` 就写**——后者才是让代码在 macOS/Linux 上同样正确的做法，`PYTHONUTF8=1` 只是本地兜底。
 
 ---
 
@@ -394,8 +344,7 @@ Set-Location G:\转型\ai-lab
 $env:PYTHONUTF8 = "1"                      # 防乱码
 py -3 python_basics\check_env.py           # 环境自检
 git status                                 # 昨天的改动在哪
-# 只在要跑 mock 时再加：
-$env:OPENAI_BASE_URL = "http://127.0.0.1:8765/v1"; $env:OPENAI_API_KEY = "test"
+$env:OPENAI_BASE_URL = "http://127.0.0.1:8765/v1"; $env:OPENAI_API_KEY = "test"   # 只在要跑 mock 时
 ```
 
 其他文档里的命令跑不通，先回 **§1 对照表**，再查 **§6 报错表**。

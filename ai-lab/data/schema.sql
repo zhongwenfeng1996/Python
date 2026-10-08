@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     subscription_id INTEGER PRIMARY KEY,
     user_id         INTEGER     NOT NULL REFERENCES users (user_id),
     tenant_id       INTEGER     NOT NULL REFERENCES tenants (tenant_id),
-    plan            TEXT        NOT NULL,               -- starter / growth / scale
+    plan            TEXT        NOT NULL,               -- free / starter / growth / scale
     mrr_cents       INTEGER     NOT NULL,
     status          TEXT        NOT NULL,               -- free / active / trialing / canceled
     started_at      TIMESTAMPTZ NOT NULL,
@@ -88,11 +88,21 @@ CREATE INDEX IF NOT EXISTS idx_users_tenant       ON users (tenant_id);
 --    用 TIMESTAMPTZ 导入会自动归一到 UTC；若用 TEXT 存储，跨时区聚合必错。
 -- 2. users.channel 存在 'Google' / 'google' / 'GOOGLE' 与 NULL，
 --    统计渠道前必须 lower(trim(channel))，否则同一渠道被拆成多行。
--- 3. users 表有约 0.5% 的邮箱大小写重复记录，直接 COUNT(*) 会虚高。
+-- 3. users 表有 6 行（约 0.5%）邮箱是已有用户的大写版本，COUNT(DISTINCT email) 会虚高。
+--    注意：这些重复行**不带自己的订阅与付款** —— 只有 users 表里有重复，
+--    subscriptions / payments 不会因此双计。（早期版本会连带复制，已修。）
 -- 4. subscriptions.status 为 'free' 或 'trialing' 的订阅没有对应 payments 记录。
 --    MRR 含试用会高估；收入统计若用 subscriptions 而非 payments 会算到没收到的钱。
 --    另外 'free' 用户会登录、会活跃，但不产生收入 —— 这是登录口径远大于付费口径的原因。
+--    注意 plan 字段也有 'free' 取值（此时 mrr_cents = 0），与 status = 'free' 同义；
+--    只按 plan 过滤会漏掉免费层。
 -- 5. payments.status = 'refunded' 的记录金额为正数，需显式扣除；
 --    'failed' 从未真正收款，必须排除。
--- 6. 最近 30 天的 events 被人为压低约 40%（异常点），
+-- 6. 最近 30 天的 login 事件被人为压低约 40%（异常点）：
+--    前 30 天 2,037 条 → 最近 30 天 1,203 条（−40.9%），
+--    而同期 paid 付款 192 → 202（+5.2%）基本不动 —— 典型的滞后指标形态。
+--    窗口统一定义为 [END-30天, END) = 2026-01-03 ~ 2026-02-01。
 --    做趋势对比时必须先确认是数据问题还是业务问题。
+--
+-- 以上六条都由 scripts/verify_dataset.py 逐条断言校验（31 条断言）。
+-- 改生成器后请运行：python scripts/rebuild_dataset.py

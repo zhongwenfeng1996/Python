@@ -40,7 +40,9 @@
 - [x] `ai-lab/python_basics/check_env.py` —— 学习材料自检
 - [x] `ai-lab/tools/env_report.py` —— 环境自检（Windows 优先）
 - [x] `ai-lab/data/schema.sql` + `generate_saas_data.py` —— 自造 SaaS 业务库，含 6 个数据陷阱
-- [x] `ai-lab/data/out/*.csv` —— 12 租户 / 1206 用户 / 9000 事件 / 2862 付款
+- [x] `ai-lab/data/out/*.csv` —— 12 租户 / 1206 用户 / 1200 订阅 / 约 2.08 万事件 / 3171 付款
+- [x] `ai-lab/scripts/verify_dataset.py` —— **把"六个雷"变成 31 条可执行断言**（当前 31/31 通过）
+- [x] `ai-lab/scripts/rebuild_dataset.py` —— 生成 + 校验一键入口
 - [x] `ai-lab/semantics/metrics.yml` —— 语义层定义（含 4 组口径冲突）
 - [x] `ai-lab/docs/windows-quickstart.md` —— Windows 命令对照 + 报错速查
 - [x] git 仓库初始化 + 首次提交 + `.gitattributes`
@@ -82,6 +84,17 @@
 
 ## 已知问题（待修）
 
+**数据集（已修，2026-02 · 本轮）**
+
+- [x] 陷阱 6 与数据相反：文档说"最近 30 天活跃下跌"，数据实际是 **上涨 2.6 倍**。
+      根因是"只在最后 30 天注入登录、此前 700 天不补基线"。已改为历史按月补基线 +
+      最近 30 天按密度压低，走同一个注入函数。
+- [x] 事件未按真实时刻排序（按带时区的 ISO 字符串排序，UTC 顺序被打乱）→ 改按真实 instant 排序
+- [x] 41% 的取消订阅共用同一个 `ended_at`（人工流失悬崖）→ 改为先抽取消时刻再反推开始时间
+- [x] `subscription_id` 恒等于 `user_id`（Text-to-SQL 的相关性捷径）→ 已打乱 ID 分配
+- [x] 重复邮箱用户连带复制订阅与付款（MRR/收入双计 0.5%）→ 重复行不再携带订阅/付款
+- [x] **新增** `verify_dataset.py`，把以上全部写成 31 条断言，防止再次劣化
+
 **Python 教程（`ai-lab/python_basics/docs/`）**
 
 | 位置 | 问题 | 严重度 |
@@ -92,16 +105,18 @@
 | `10-调试与报错.md:95` | 示例引号是 ASCII，不会报 SyntaxError，与正文矛盾 | 中 |
 | `10-调试与报错.md:14,34,45` | 引用行号 47，实际是 68 | 低 |
 | `docs/README.md:3,37-45` | 写"9 章"，实际 10 章；章节表缺第 10 章 | 低 |
-| 多处 | macOS 命令（`python3`、`source .venv/bin/activate`） | 中 |
+| `python_basics/README.md:90-97` | 说"三天之后仍不需要学 asyncio"，与 Day 3 覆盖 07–10 冲突 | 低 |
+| `check_env.py:129` | 检查的是 `ai-lab/.venv`，但教程让在 `python_basics` 建 `.venv` | 中 |
+| `check_env.py:61-69` | 只检查 10 章中的 2 章，却宣称"检查必需文件" | 中 |
+| `check_env.py:53` | 门槛 3.9，但教程代码用了 3.10+ 语法（`X \| None`） | 中 |
+| 两份 README | `chat.py` 写 257 行，实际 304 行 | 低 |
 
-**其他**
+**最大内容缺口**
 
-| 位置 | 问题 |
-|---|---|
-| `python_basics/check_env.py:129` | 检查的是 `ai-lab/.venv`，但教程让在 `python_basics` 建 `.venv` |
-| `python_basics/check_env.py:61-69` | 只检查 10 章中的 2 章，却宣称"检查必需文件" |
-| `check_env.py:53` | 门槛 3.9，但教程代码用了 3.10+ 语法（`X \| None`） |
-| 两份 README | `chat.py` 写 257 行，实际 304 行 |
+- [ ] Python 教程里 **FastAPI 占 0 行**（目标是"能写 FastAPI 后端"，现在一步没教）
+- [ ] Pydantic 只到"能定义模型"，缺 `model_json_schema()`（结构化输出/工具调用的地基）
+- [ ] asyncio 只到 `gather` 入门，缺"已运行事件循环里再 `asyncio.run()`"这个 FastAPI 最经典错误
+- [ ] 测试（pytest）、日志、`.env` 配置管理全部缺失
 
 ---
 
