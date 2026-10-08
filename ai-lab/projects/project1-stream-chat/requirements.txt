@@ -1,0 +1,22 @@
+# 项目一依赖
+#
+# 安装（Windows）：
+#   G:\转型\.venv\Scripts\python -m pip install -r requirements.txt
+#
+# 国内网络注意：pypi.org 在部分网络下不可达或极慢，
+# 用仓库自带的镜像配置：
+#   $env:PIP_CONFIG_FILE = "G:\转型\ai-lab\projects\project1-stream-chat\pip.ini"
+#
+# 版本按 2026-10 实测可用的组合固定。FastAPI 0.142 需要 pydantic 2.x。
+fastapi==0.142.4
+uvicorn[standard]==0.54.0
+httpx==0.28.1
+pydantic==2.13.5
+
+# 测试
+pytest==9.1.1
+pytest-asyncio==1.4.0
+
+# 说明：pytest-asyncio 1.x 的 `asyncio_mode = auto` 与 0.x 写法一致，
+# 但 1.x 起 `event_loop` fixture 被移除，改用 loop_scope 参数 ——
+# 如果你在网上抄到 `@pytest.fixture def event_loop()`，那套写法在 1.x 会报错。

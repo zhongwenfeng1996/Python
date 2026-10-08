@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     一键启动项目一（本地 mock 模式，不需要任何 API Key）。
 

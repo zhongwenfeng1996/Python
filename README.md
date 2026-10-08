@@ -3,8 +3,8 @@
 一个前端工程师转 LLM 应用工程师的完整转型记录：学习计划、实战代码、数据集、评估脚本，
 以及每周的进度与复盘。**所有产出公开，进度可验证。**
 
-> **当前状态：W0 → W1 过渡**
-> 教材与数据底座已就绪，正在落地项目一（流式多模型对话应用）。
+> **当前状态：W1–W3 · 项目一已可运行（13/13 验收测试通过）**
+> 教材、数据底座、开发环境都已就绪；项目一后端完成，前端待浏览器验证。
 
 ---
 
@@ -13,7 +13,9 @@
 | 你想做什么 | 去哪里 |
 |---|---|
 | **看懂整体规划**（8 周全职 / 12 周在职） | [前端转LLM应用工程师-学习计划.md](<前端转LLM应用工程师-学习计划.md>) |
-| **配环境**（Windows 专用，命令可复制） | [ai-lab/docs/windows-quickstart.md](ai-lab/docs/windows-quickstart.md) |
+| **一条命令配好环境** | `Set-Location G:\转型; .\setup.ps1` |
+| **跑起来看项目一** | `cd ai-lab\projects\project1-stream-chat; .\run.ps1` |
+| **配环境出问题了**（Windows 专用，含本机实测的四个坑） | [ai-lab/docs/windows-quickstart.md](ai-lab/docs/windows-quickstart.md) |
 | **看当前进度与下一步** | [STATUS.md](STATUS.md) |
 | **写代码 / 做练习** | [ai-lab/](ai-lab/README.md) |
 | **补 Python**（零基础，3 天） | [ai-lab/python_basics/](ai-lab/python_basics/README.md) |
@@ -64,12 +66,22 @@
     │   └── check_env.py               #   学习材料自检
     ├── tools/
     │   └── env_report.py              # 环境自检（Windows 优先）
+    ├── projects/
+    │   └── project1-stream-chat/      # 🎯 项目一：流式多模型对话（已完成）
+    │       ├── backend/               #   FastAPI + httpx，无状态可降级
+    │       ├── frontend/              #   Vue 3 + 手写 SSE 解析（零构建）
+    │       ├── tests/                 #   13 条验收断言（真进程 + 真 HTTP）
+    │       ├── tools/verify_e2e.py    #   端到端证据（TTFT / 成本实测）
+    │       ├── docs/ADR.md            #   6 条架构决策记录
+    │       └── run.ps1                #   一键启动
     ├── data/
     │   ├── schema.sql                 # Postgres 建表 + 六个数据陷阱说明
     │   └── out/                       # 生成的数据（git 忽略，可重建）
     ├── scripts/
     │   ├── generate_saas_data.py      # 自造 SaaS 业务库生成器（零依赖）
-    │   └── load_to_postgres.sh        # 一键建表 + 导入
+    │   ├── verify_dataset.py          # 把"六个雷"变成 31 条可执行断言
+    │   ├── rebuild_dataset.py         # 生成 + 校验 一键入口
+    │   └── load_to_postgres.sh        # 一键建表 + 导入（bash）
     └── semantics/
         └── metrics.yml                # 语义层定义（项目三的护城河）
 ```
@@ -78,7 +90,7 @@
 
 | # | 项目 | 核心考点 | 完成周 | 状态 |
 |---|---|---|---|---|
-| 1 | 流式多模型对话 | 流式、中断、降级、成本可视化 | W3 | 🚧 进行中 |
+| 1 | [流式多模型对话](ai-lab/projects/project1-stream-chat/README.md) | 流式、中断、降级、成本可视化 | W3 | ✅ 后端+测试完成，前端待浏览器验证 |
 | 2 | 企业知识库问答 | 切片、混合检索、rerank、评估、引用 | W7 | ⬜ |
 | 3 | 对话式数据分析 Agent | schema 检索、语义层、EX 评估、图表、SQL 安全 | W12 | ⬜ |
 
@@ -86,26 +98,48 @@
 
 ## 环境要求
 
-- **Python 3.11+** —— 系统上还没装的话，先看 [windows-quickstart](ai-lab/docs/windows-quickstart.md)
+- **Python 3.12** —— 已装在本机 `G:\Python\Python312`
+- **虚拟环境** —— 已建在本仓库根 `G:\转型\.venv`（依赖已装好）
 - **git** —— 版本管理，也是"进度可验证"的前提
 - **Docker Desktop** —— W5 之后跑 Postgres + pgvector 用
-- 至少 2 个模型 API Key（一个闭源、一个开源）
+- 至少 2 个模型 API Key（一个闭源、一个开源）—— **不配也能学**，见下面"离线运行"
 
-快速自检（确认手边到底有什么）：
+**一条命令完成环境初始化**（换机器、或环境坏了的时候用）：
 
 ```powershell
-py -3 ai-lab\tools\env_report.py       # 环境总览
-py -3 ai-lab\python_basics\check_env.py # 学习材料是否齐全
+Set-Location G:\转型
+.\setup.ps1
 ```
 
-`week01/` 和 `python_basics/` 里的脚本**全部零依赖**，不需要 API Key 也能验证：
+它会探测解释器 → 建 `.venv` → 从国内镜像装依赖 → 跑环境自检。
+三种失败它都会给出可直接粘贴的修复命令。
+
+自检（确认手边到底有什么）：
 
 ```powershell
-# 终端 1：起本地 mock
-py -3 ai-lab\week01\mock_server.py
-# 终端 2：跑流式对话
-$env:OPENAI_BASE_URL = "http://127.0.0.1:8765/v1"; $env:OPENAI_API_KEY = "test"
-py -3 ai-lab\week01\chat.py
+& G:\转型\.venv\Scripts\python ai-lab\tools\env_report.py         # 环境总览
+& G:\转型\.venv\Scripts\python ai-lab\python_basics\check_env.py  # 学习材料是否齐全
+& G:\转型\.venv\Scripts\python ai-lab\scripts\verify_dataset.py   # 数据集 31 条断言
+```
+
+### 本机的四个环境事实（踩过才知道）
+
+| 事实 | 说明 |
+|---|---|
+| `pypi.org` 不可达，清华镜像可达 | 直连 pypi 会**挂住几分钟**而非立刻报错，很像卡死。装包一律加 `--index-url` |
+| **没有 `pwsh`**，只有 Windows PowerShell 5.1 | 5.1 读无 BOM 的 `.ps1` 会按 GBK 解码，中文注释会吃掉引号，报出误导性的语法错误。仓库的 `.ps1` 已全部带 BOM，`.gitattributes` 也做了保证 |
+| `pip` 的配置文件在中文路径下不可用 | 路径含中文时 pip 报 `invalid cp936 characters`；改用命令行 `--index-url` |
+| C 盘只剩约 30GB | 所以 Python 装到 G 盘 |
+
+完整清单与排查方法见 [Windows 上手指南](ai-lab/docs/windows-quickstart.md#01-本机实测结论2026-10这台机器)。
+
+### 离线运行（不需要任何 API Key）
+
+`week01/`、`python_basics/` 和项目一**全部可以离线跑**，用仓库自带的 mock 服务假装模型：
+
+```powershell
+cd ai-lab\projects\project1-stream-chat
+.\run.ps1          # 起 mock + 后端，自动打开浏览器
 ```
 
 ---

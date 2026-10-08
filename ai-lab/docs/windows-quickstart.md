@@ -18,6 +18,38 @@ $PSVersionTable.PSVersion   # 5.1.x = 系统自带；7.x = PowerShell 7
 2. **多行续行用反引号**，它必须是行尾最后一个字符，后面不能有空格。
 3. **`<` `>` 是 PowerShell 保留字符**：`<你的用户名>` 这类占位符不要连尖括号一起复制。
 
+### 0.1 本机实测结论（2026-10，这台机器）
+
+这几条是**实际踩出来的**，不是从文档抄的。同一台机器上的其他人大概率会遇到同样的问题：
+
+| 事实 | 影响 |
+|---|---|
+| **本机没有 `pwsh`**（只有 5.1） | `pwsh` 相关的建议暂时用不上；所有脚本要按 5.1 的规则写 |
+| **`.ps1` 脚本必须带 UTF-8 BOM** | 5.1 读**无 BOM** 的 UTF-8 脚本时按 GBK 解码，中文注释会吃掉引号，报出**完全误导人**的 `The string is missing the terminator` / `Missing expression after ','`，行号还指到别处 |
+| **`pip` 的配置文件在中文路径下不可用** | 路径含中文时，pip 读 `PIP_CONFIG_FILE` 会报 `Configuration file contains invalid cp936 characters`。把文件内容改成纯 ASCII 也没用 —— 出问题的是**路径**。改用命令行 `--index-url` |
+| **`pypi.org` 不可达，清华/阿里镜像可达** | 直连 pypi 会**挂住几分钟**而不是立刻报错，很像"卡死"。一律加 `--index-url` |
+| **系统原先没有任何独立 Python** | `python` 只是 Microsoft Store 占位符（报 `Python was not found...`）。已装 `G:\Python\Python312` |
+
+**给仓库里 `.ps1` 脚本加 BOM 的方法**（改完脚本后如果又出现"字符串缺少终止符"，就是这个原因）：
+
+```powershell
+# 用仓库的 .venv 跑一次，把无 BOM 的 .ps1 补上 BOM
+& G:\转型\.venv\Scripts\python -c @"
+import pathlib
+for f in [r'G:\转型\setup.ps1']:
+    p = pathlib.Path(f); raw = p.read_bytes()
+    if not raw.startswith(b'\xef\xbb\xbf'):
+        p.write_bytes(b'\xef\xbb\xbf' + raw); print('added BOM:', f)
+"@
+```
+
+`.gitattributes` 里已经写了 `*.ps1 text eol=crlf working-tree-encoding=UTF-8`，
+所以**新 clone 出来的脚本是带 BOM 的**，不需要每次手动补。
+
+> ⚠️ 编辑器注意：VS Code 右下角显示 `UTF-8 with BOM` 才是对的。如果显示 `UTF-8`，
+> 用它另存为 "UTF-8 with BOM"。**这条只对 `.ps1` 重要** ——
+> `.py` / `.md` / `.sh` 一律**不要** BOM（会破坏 shebang，也让 diff 变脏）。
+
 ---
 
 ## 1. 命令对照表（bash → PowerShell）
@@ -53,6 +85,18 @@ curl.exe -N -s https://api.deepseek.com/v1/chat/completions -H "Content-Type: ap
 ## 2. 一次性环境搭建（按顺序执行）
 
 ```powershell
+# 2.0 【最省事】一键完成 2.1–2.4：探测解释器 → 建 .venv → 装依赖 → 自检
+Set-Location G:\转型
+.\setup.ps1
+```
+
+`setup.ps1` 会依次尝试 `G:\Python\Python312`、`C:\Python312`、`%LOCALAPPDATA%\Programs\Python\...`、
+PATH 里的 `python` / `py`，并**跳过 Microsoft Store 的占位符**（那个"存在但不可用"，
+运行它只会提示你去商店装）。探测失败时会打印可直接粘贴的安装命令。
+
+下面是它替你做的事，手写一遍也可以 —— **但照抄时注意版本与路径**：
+
+```powershell
 # 2.1 装 Python 3.11+ 并验证（-0 是数字零，不是字母 O）
 winget install Python.Python.3.12
 py -3 --version       # 期望 3.11+
@@ -64,22 +108,32 @@ where.exe python      # 看 PATH 解析到哪个 python.exe
   `python` 仍找不到，**关掉终端重开**（PATH 变更不会注入已开的窗口），仍不行就重跑安装包补勾选。
   包 ID 与版本以 <https://www.python.org/downloads/windows/> 和 `winget search Python.Python` 为准。
 - `py` 是 Windows 的 **Python 启动器**（PEP 397），`py -3` = 最新 Python 3，比 `python` 更可靠。
+- **本机实测**：`winget` 是否可用未验证；实际是用官网安装包静默装的，装在
+  `G:\Python\Python312`（装到 G 盘是因为 C 盘只剩 30GB）：
+  ```powershell
+  $u = 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe'
+  Invoke-WebRequest $u -OutFile "$env:TEMP\py312.exe"
+  Start-Process "$env:TEMP\py312.exe" -Wait -ArgumentList `
+    '/quiet','InstallAllUsers=0','TargetDir=G:\Python','PrependPath=1','Include_launcher=1'
+  ```
+  注意 `TargetDir=G:\Python` 会被当作**父目录**，实际装到 `G:\Python\Python312\`。
 
 ```powershell
-# 2.2 建虚拟环境并激活：提示符前出现 (.venv) 才算成功
-Set-Location G:\转型\ai-lab
-py -3 -m venv .venv
+# 2.2 建虚拟环境（建在**仓库根** G:\转型，不是 ai-lab）
+Set-Location G:\转型
+& G:\Python\Python312\python.exe -m venv .venv
 .\.venv\Scripts\Activate.ps1
 # 报"禁止运行脚本"就先执行一次（详见 §6）：
 #   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 # 退出虚拟环境：deactivate
 
-# 2.3 装依赖
-python -m pip install --upgrade pip
-python -m pip install httpx pydantic fastapi "uvicorn[standard]" pytest
+# 2.3 装依赖（国内必须加镜像，直连 pypi.org 会挂住）
+$mirror = @('--index-url','https://pypi.tuna.tsinghua.edu.cn/simple','--timeout','30')
+python -m pip install -q @mirror --upgrade pip
+python -m pip install -q @mirror fastapi "uvicorn[standard]" httpx pytest pytest-asyncio
 
 # 2.4 环境自检
-py -3 python_basics\check_env.py
+python ai-lab\tools\env_report.py
 ```
 
 `"uvicorn[standard]"` 的**方括号在 PowerShell 里是通配符，必须加引号**。**每个新开的终端都要重新激活**：
@@ -339,12 +393,18 @@ py -3 -c "import locale,sys; print(sys.getfilesystemencoding(), locale.getprefer
 ## 8. 每次开工的六条命令
 
 ```powershell
-Set-Location G:\转型\ai-lab
+Set-Location G:\转型                       # 仓库根（git 在这里，.venv 也在这里）
 .\.venv\Scripts\Activate.ps1
 $env:PYTHONUTF8 = "1"                      # 防乱码
-py -3 python_basics\check_env.py           # 环境自检
+python ai-lab\tools\env_report.py          # 环境自检
 git status                                 # 昨天的改动在哪
-$env:OPENAI_BASE_URL = "http://127.0.0.1:8765/v1"; $env:OPENAI_API_KEY = "test"   # 只在要跑 mock 时
+
+# 想跑项目一（本地 mock，不需要 Key）：
+cd ai-lab\projects\project1-stream-chat; .\run.ps1
 ```
+
+> **`.venv` 在仓库根 `G:\转型\.venv`**，不在 `ai-lab\` 下 —— 因为项目分散在
+> `ai-lab/projects/*/` 里，共用一套依赖比每个项目建一份更省事（也是 `setup.ps1` 的做法）。
+> 早先文档写的是 `ai-lab/.venv`，已统一。
 
 其他文档里的命令跑不通，先回 **§1 对照表**，再查 **§6 报错表**。

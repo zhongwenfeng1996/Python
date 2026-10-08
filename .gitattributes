@@ -27,7 +27,20 @@
 # ---- Windows 专属脚本保留 CRLF ----
 *.bat  text eol=crlf
 *.cmd  text eol=crlf
-*.ps1  text eol=crlf
+
+# PowerShell 脚本必须带 UTF-8 BOM。
+#
+# 为什么（本机踩过的真坑）：Windows 自带的 Windows PowerShell 5.1 读取**无 BOM**
+# 的 .ps1 时，会按系统 ANSI 代码页解码（中文 Windows = GBK）。脚本里的中文注释
+# 一旦被误解码，某些字节序列会吃掉引号，于是报出完全误导人的
+#   "The string is missing the terminator" / "Missing expression after ','"
+# 报错行号还指向别处，能查一小时。
+#
+# `working-tree-encoding=UTF-8` + `text` 让 git 在检出时写成带 BOM 的 UTF-8。
+# 注意：这条只对 .ps1/.psm1 这类"被 Windows 解释器按本地编码读取"的文件重要；
+# .py / .md / .sh 一律不要 BOM（Python 3 虽然能处理 BOM，但会干扰 shebang 与 diff）。
+*.ps1  text eol=crlf working-tree-encoding=UTF-8
+*.psm1 text eol=crlf working-tree-encoding=UTF-8
 
 # ---- Shell 脚本必须是 LF，否则 Linux/Docker 里无法执行 ----
 *.sh   text eol=lf
