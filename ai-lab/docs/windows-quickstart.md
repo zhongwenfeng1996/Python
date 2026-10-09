@@ -351,7 +351,7 @@ foreach ($t in "tenants","users","subscriptions","events","payments") {
 |---|---|---|
 | `python : 无法将"python"项识别为 cmdlet`、`'python' 不是内部或外部命令` | 没装 / 没勾 Add to PATH | 重装并勾选，或关掉终端重开；临时用 `py -3` |
 | `python3` 找不到，或运行 `python3` 弹出微软商店 | **Windows 没有 `python3`**，那是应用执行别名（stub） | 用 `py -3`；在"设置→应用→高级应用设置→应用执行别名"里关掉它 |
-| `无法加载文件 ...Activate.ps1，因为在此系统上禁止运行脚本` | 执行策略默认 Restricted | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`；或改用 `.venv\Scripts\activate.bat`（cmd）；或不激活，直接用 `.\.venv\Scripts\python.exe` 跑脚本 |
+| `无法加载文件 ...run.ps1，因为在此系统上禁止运行脚本`（或 `未对文件进行数字签名`） | 执行策略拦住了 `.ps1` | 见下面「执行策略：为什么改了还是被拦」——**光改策略往往不够，要新开窗口** |
 | 中文乱码 / 方块 | 控制台代码页不是 UTF-8 | `chcp 65001`；`[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`；`$env:PYTHONUTF8="1"`；用 Windows Terminal |
 | `UnicodeDecodeError: 'gbk' codec can't decode byte ...` | 读 UTF-8 文件时用了 GBK 默认编码 | 代码里显式 `encoding="utf-8"`；或 `$env:PYTHONUTF8 = "1"`（§7） |
 | `UnicodeEncodeError: 'gbk' codec can't encode character '\u2705'` | 输出被重定向到文件/管道时按 GBK 编码 | 同上，或 `py -3 -X utf8 script.py` |
@@ -362,6 +362,40 @@ foreach ($t in "tenants","users","subscriptions","events","payments") {
 | `参数名 -r 不明确` / `cp -r` 失败 | `cp` 是 `Copy-Item` 别名，参数不同 | `Copy-Item -Recurse`、`Remove-Item -Recurse -Force` |
 | `FATAL: role "Administrator" does not exist` | Windows 默认用户名不是 PG 超级用户 | 设 `$env:PGUSER="postgres"`（+ `$env:PGPASSWORD`）或加 `-U postgres` |
 | 多个 Python 打架 | PATH 里有多份 Python | `py -0p` 看清单，用 `py -3.12` 精确定位；`where.exe python` 看优先级 |
+
+### 执行策略：为什么改了还是被拦
+
+**这是本机实测过的一个坑**：策略显示已经是 `RemoteSigned`，脚本却依然被拦。
+
+原因：**PowerShell 只在启动时读一次执行策略**，之后不再重读。
+所以你在窗口 A 里改了策略，**窗口 A 本身仍然按旧策略执行** ——
+必须新开窗口，或者给当前窗口单独放行。
+
+**三种处理方式，按推荐顺序：**
+
+```powershell
+# ① 只对当前窗口放行（最安全，立即生效，不需要管理员，关掉窗口就恢复）
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\run.ps1
+
+# ② 永久改（需要管理员；加 -Force 跳过交互确认）
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+#    改完必须【新开一个 PowerShell 窗口】才生效
+
+# ③ 完全绕开 .ps1（不想碰策略时）
+#    照文档里的"手动两个终端"方式，直接用 python.exe 跑
+```
+
+**怎么确认当前窗口用的是哪个策略：**
+
+```powershell
+Get-ExecutionPolicy -List      # 看所有作用域
+Get-ExecutionPolicy            # 看当前生效的
+```
+
+> **为什么本仓库的脚本值得放行**：`setup.ps1` / `run.ps1` / `eval.ps1` 都是纯本地操作 ——
+> 找 Python、建 venv、装依赖、起服务、跑测试。想确认可以 `notepad` 打开看全文，
+> 或者用 `Get-Content .\run.ps1 | Select-String 'Start-Process'` 只看它会启动什么。
 
 ---
 

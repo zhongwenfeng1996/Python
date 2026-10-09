@@ -32,6 +32,30 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# ----------------------------------------------------------------------
+# 执行策略自检
+# ----------------------------------------------------------------------
+# 为什么需要这一段：如果 PowerShell 的策略是 Restricted / AllSigned，
+# **脚本根本不会被执行** —— 你会看到一大段 "无法加载文件 ... 未对文件进行数字签名"
+# 加一个 microsoft.com/fwlink 链接，但没人告诉你该跑哪一行命令。
+#
+# 注意：如果策略真的禁止运行，这段代码本身也不会执行（脚本压根没被加载）。
+# 那怎么办？两种可能：
+#   1. 策略是 Restricted -> 用户看到的是原始报错，需要外面告诉他怎么办
+#      -> README 和文档里必须写清楚（我们写了）
+#   2. 策略允许运行但有别的问题 -> 这段自检能兜住
+# 所以这段的价值是"兜住情况 2"，真正拦死的情况只能靠文档。
+$policy = Get-ExecutionPolicy
+if ($policy -in @('Restricted', 'AllSigned')) {
+    Write-Host ""
+    Write-Host "[!] 当前 PowerShell 执行策略是 $policy，脚本可能无法正常启动子进程。" -ForegroundColor Yellow
+    Write-Host "    先执行这一行（只影响当前窗口，关掉就恢复）：" -ForegroundColor Yellow
+    Write-Host "      Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass" -ForegroundColor White
+    Write-Host ""
+    exit 1
+}
+
 $root = $PSScriptRoot
 $repo = (Resolve-Path (Join-Path $root '..\..\..')).Path          # G:\转型
 $venvPython = Join-Path $repo '.venv\Scripts\python.exe'

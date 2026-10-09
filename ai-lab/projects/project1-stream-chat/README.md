@@ -82,7 +82,21 @@ G:\转型\.venv\Scripts\python -m uvicorn main:app --port 8000
 
 打开 <http://127.0.0.1:8000/> —— 页面顶部会显示黄标 **"本地 mock（不花钱）"**。
 
-> 也有一键脚本：`.\run.ps1`（见 `run.ps1 -Help`）。
+> 也有一键脚本：`.\run.ps1`（见 `run.ps1 -Help`）。它会自动起 mock + 后端 + 开浏览器。
+>
+> ⚠️ **如果报「禁止运行脚本」**：这是 PowerShell 执行策略，不是脚本有问题。
+> **先执行下面这一行**（只影响当前窗口，不需要管理员，关掉就恢复）：
+>
+> ```powershell
+> Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+> ```
+>
+> 然后重跑 `.\run.ps1`。
+>
+> **注意一个坑**：如果你之前已经用 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 改过策略，
+> 但脚本依然被拦 —— 那是因为 **PowerShell 只在启动时读一次策略**，你那个窗口还在用旧策略。
+> 两个办法：**新开一个 PowerShell 窗口**，或者用上面的 `-Scope Process`。
+> 详见 [Windows 上手指南 §6](../../docs/windows-quickstart.md#执行策略为什么改了还是被拦)。
 
 ### 方式 B · 真实调用
 
