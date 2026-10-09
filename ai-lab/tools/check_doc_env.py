@@ -270,6 +270,29 @@ def check_test_counts(results: Results) -> None:
               source)
 
 
+def check_readability_tool(results: Results) -> None:
+    """
+    教程可读性检查本身必须存在且通过。
+
+    为什么把它也纳入：那个脚本负责发现"没头没尾的代码片段"，
+    如果它自己坏了（语法错误、或被人改成永远返回 0），
+    就没有任何东西会提醒你 —— 而它要防的正是"文档让新手看不懂"这类问题。
+    """
+    tool = AI_LAB / "tools" / "check_docs_readability.py"
+    if not tool.exists():
+        check(results, "教程可读性检查脚本存在", False, "缺失", "ai-lab/tools/")
+        return
+    out = subprocess.run(
+        [sys.executable, str(tool)],
+        capture_output=True, text=True, encoding="utf-8", timeout=120,
+    )
+    check(results, "教程可读性检查通过（无新的悬空代码片段）",
+          out.returncode == 0,
+          "通过（已知误报不计入失败）" if out.returncode == 0 else
+          f"exit={out.returncode}：{(out.stdout or '')[-200:]}",
+          "ai-lab/tools/check_docs_readability.py")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="校验文档描述的环境与真实环境是否一致")
     ap.add_argument("--quiet", action="store_true", help="只打印漂移项与总结")
@@ -288,6 +311,7 @@ def main() -> int:
     check_doc_references(results)
     check_mock_behaviour(results)
     check_test_counts(results)
+    check_readability_tool(results)
 
     passed = sum(1 for _, ok, _, _ in results if ok)
     for desc, ok, actual, source in results:

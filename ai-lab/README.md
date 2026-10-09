@@ -15,6 +15,13 @@ ai-lab/
 │   ├── schema.sql              # Postgres 建表 + 已知陷阱说明
 │   ├── out/                    # 生成的数据（git 忽略，可重建）
 │   └── ...
+├── tools/                      # 质量检查工具（三个分工见下）
+│   ├── env_report.py           # 手边有什么（解释器/依赖/编码）
+│   ├── check_doc_env.py        # 文档说的是不是真的（19 项一致性断言）
+│   └── check_docs_readability.py  # 教程有没有"没头没尾"的代码片段
+├── projects/
+│   ├── project1-stream-chat/   # 🎯 项目一：流式多模型对话
+│   └── mcp-minimal/            # 🎯 MCP Server 最小实验
 ├── scripts/
 │   ├── generate_saas_data.py   # 自造 SaaS 业务库生成器（零依赖）
 │   ├── verify_dataset.py       # 校验"六个雷"是否真的在数据里（把文档断言变成可执行测试）
@@ -23,6 +30,23 @@ ai-lab/
 ├── semantics/
 │   └── metrics.yml             # 语义层定义（项目三的护城河）
 └── README.md
+```
+
+### 三个检查工具的分工
+
+它们回答的是三个不同的问题，不要混：
+
+| 脚本 | 回答的问题 | 什么时候跑 |
+|---|---|---|
+| `tools/env_report.py` | **手边有什么**（解释器、依赖、编码、目录） | 换机器 / 环境出问题时 |
+| `scripts/verify_dataset.py` | **数据里有什么**（31 条断言，"六个雷"在不在） | 改完数据生成器 |
+| `tools/check_doc_env.py` | **文档说的是不是真的**（19 项，含可读性检查） | 改完文档或路径之后 |
+
+```powershell
+& G:\转型\.venv\Scripts\python ai-lab\tools\env_report.py
+& G:\转型\.venv\Scripts\python ai-lab\scripts\verify_dataset.py
+& G:\转型\.venv\Scripts\python ai-lab\tools\check_doc_env.py
+& G:\转型\.venv\Scripts\python ai-lab\tools\check_docs_readability.py
 ```
 
 ## 快速开始
