@@ -98,6 +98,46 @@ G:\转型\.venv\Scripts\python -m uvicorn main:app --port 8000
 > 两个办法：**新开一个 PowerShell 窗口**，或者用上面的 `-Scope Process`。
 > 详见 [Windows 上手指南 §6](../../docs/windows-quickstart.md#执行策略为什么改了还是被拦)。
 
+### 怎么看后端日志（用 `run.ps1` 时必读）
+
+`run.ps1` 会把两个后台进程的输出**重定向到文件**，所以你那个窗口只会显示
+`[1/3]...[3/3]` 的启动提示，**看不到实时日志**。日志在这里：
+
+| 文件 | 内容 |
+|---|---|
+| `logs\app.err.log` | **应用日志**（请求开始/完成/被取消、TTFT、token、成本）—— 你最常看的 |
+| `logs\app.out.log` | uvicorn 的访问日志（每个 HTTP 请求一行） |
+| `logs\mock.err.log` | mock 上游的日志 |
+
+**实时跟随**（像 `tail -f`，另开一个 PowerShell 窗口，操作时保持它开着）：
+
+```powershell
+Get-Content G:\转型\ai-lab\projects\project1-stream-chat\logs\app.err.log -Wait -Tail 30
+```
+
+**只想看最近 20 行**：
+
+```powershell
+Get-Content G:\转型\ai-lab\projects\project1-stream-chat\logs\app.err.log -Tail 20
+```
+
+日志长这样，第 2 行就是"中断后不残留后台请求"的证据：
+
+```
+11:20:12 INFO    chat | [9db169df] 请求 model=deepseek-chat messages=1 temp=0.7
+11:20:14 INFO    chat | [9db169df] 完成 model=deepseek-chat ttft=1.54s 总=1.80s in=11 out=23 估算=False
+11:20:46 INFO    chat | [5611830a] 请求 model=deepseek-chat messages=3 temp=0.7
+11:20:47 INFO    chat | [5611830a] 请求被取消（客户端断开） 已生成 2 字     ← 点"停止"就会打这行
+```
+
+> **想直接在终端里看实时日志**？用手动两个终端的方式启动（上面「方式 A」的手动版），
+> 后端那个终端就是实时日志。这是唯一能看到彩色/实时输出的方式 ——
+> `run.ps1` 为了保持窗口干净，选择了写文件。
+
+> **日志是块缓冲的坑**：`backend\main.py` 里用了一个会立刻 `flush()` 的日志 handler。
+> 不加的话，输出重定向到文件时会攒够一个缓冲区才落盘 ——
+> 你点了"停止"，要等好几秒才看到"请求被取消"，那这条验证就没法做了。
+
 ### 方式 B · 真实调用
 
 ```powershell

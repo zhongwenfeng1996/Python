@@ -58,11 +58,30 @@ from providers import FirstTokenTimeout, UpstreamError, stream_chat
 # ----------------------------------------------------------------------
 # 日志：调试 LLM 应用的第一原则是"让错误可见"
 # ----------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)-7s %(name)s | %(message)s",
+# 为什么要自己建 handler，而不是只用 logging.basicConfig：
+#
+# `run.ps1` 会把后端的 stdout/stderr **重定向到日志文件**。而 Python 的
+# StreamHandler 在目标是文件（非 tty）时**默认是块缓冲**的 —— 日志要攒够
+# 一个缓冲区才落盘。后果是：你在浏览器里点了"停止"，想看服务端的
+# "请求被取消（客户端断开）"，却要等好几秒甚至等到下一次请求才出现。
+#
+# 对"边操作边看日志"这个用途来说，这就废了。所以显式 flush。
+#
+# （这个坑是本机实测发现的：日志文件一开始显示 0 字节，发了请求才一次性出现。）
+class _FlushingHandler(logging.StreamHandler):
+    """每条日志立刻 flush，让重定向到文件时也能实时看到。"""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        super().emit(record)
+        self.flush()
+
+
+_handler = _FlushingHandler()
+_handler.setFormatter(logging.Formatter(
+    "%(asctime)s %(levelname)-7s %(name)s | %(message)s",
     datefmt="%H:%M:%S",
-)
+))
+logging.basicConfig(level=logging.INFO, handlers=[_handler])
 log = logging.getLogger("chat")
 
 app = FastAPI(title="流式多模型对话", version="1.0.0")
