@@ -1,0 +1,48 @@
+// 项目二 · 检索评估集
+//
+// 格式（一行一条 JSON，见 ADR-005）：
+//   {"id","question","answer","gold_doc","type","difficulty","must_contain"}
+//
+// 关键约束（run_eval.py 与 check_questions.py 会机械校验，不通过就拒绝出指标）：
+//   - gold_doc 必须真实存在于语料中（相对仓库根，POSIX 风格路径）
+//   - must_contain 必须真的能在 gold_doc 里找到 —— 证明答案有出处，不是编的
+//
+// gold_doc 为空 = 不可答题。**故意包含**，用来测系统会不会硬编答案。
+// 一个连"我不知道"都不会说的 RAG，在生产里是负资产。
+//
+// ⚠️ 一个已踩过的坑：**不要把 project2-rag 自己的文档当 gold_doc**。
+//    corpus.py 把 project2-rag 排除了（防止评估时从自己的设计文档里"抄答案"），
+//    所以拿它当 gold_doc 会直接校验不过 —— 这是自相矛盾的题。
+//
+// 覆盖类型：fact（事实查找）/ cross（跨段推理）/ code（代码相关）/ unanswerable（拒答）
+
+{"id":"q001","question":"章节重排后 def 在第几章教？","answer":"第 04 章 · 函数。原设计在第 05 章，重排后提到第 04 章，因为第 05 章要讲函数级作用域，而作用域必须用到 def。","gold_doc":"ai-lab/python_basics/docs/04-函数.md","type":"fact","difficulty":"easy","must_contain":"函数"}
+{"id":"q002","question":"首 token 超时的默认值是多少秒？","answer":"默认 8 秒，触发降级到备用模型；总超时是 60 秒作为兜底。","gold_doc":"ai-lab/projects/project1-stream-chat/docs/ADR.md","type":"fact","difficulty":"easy","must_contain":"8"}
+{"id":"q003","question":"MCP Server 最小实验提供了哪三个工具？","answer":"echo（原样回显）、now（返回 UTC 时间）、calc（四则运算，用 AST 解析而不是 eval）。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"fact","difficulty":"easy","must_contain":"calc"}
+{"id":"q004","question":"为什么 MCP Server 不暴露 read_file 或 run_command？","answer":"因为它们有副作用、能读任意文件或执行任意命令，会把模型变成一个可以读写整台机器的代理，安全边界无法控制。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"fact","difficulty":"medium","must_contain":"read_file"}
+{"id":"q005","question":"为什么 .ps1 脚本必须带 UTF-8 BOM？","answer":"PowerShell 5.1 读没有 BOM 的 UTF-8 脚本时会按 GBK 解码，中文注释会吃掉引号，报出完全误导人的语法错误，而且行号还指到别处。","gold_doc":"ai-lab/docs/windows-quickstart.md","type":"fact","difficulty":"medium","must_contain":"BOM"}
+{"id":"q006","question":"改了 PowerShell 执行策略为什么脚本还是被拦？","answer":"因为 PowerShell 只在启动时读一次执行策略，之后不再重读。在窗口里改了策略，那个窗口本身仍按旧策略执行，必须新开窗口，或者用 Set-ExecutionPolicy -Scope Process 只对当前窗口放行。","gold_doc":"ai-lab/docs/windows-quickstart.md","type":"cross","difficulty":"medium","must_contain":"只在启动时读一次"}
+{"id":"q007","question":"数据集里共有几个已知陷阱？","answer":"6 个数据陷阱，被 verify_dataset.py 变成了 31 条可执行断言。","gold_doc":"STATUS.md","type":"fact","difficulty":"easy","must_contain":"陷阱"}
+{"id":"q008","question":"项目一现在有多少条测试通过？","answer":"28 条，由 13 条 API 验收测试和 15 条评估框架自测组成。","gold_doc":"STATUS.md","type":"fact","difficulty":"easy","must_contain":"28"}
+{"id":"q009","question":"SSE 每条消息为什么必须以空行结尾？","answer":"空行是 SSE 的消息分隔符。少了它浏览器会一直等下一行，表现为服务端明明发了但前端收不到。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"fact","difficulty":"medium","must_contain":"空行"}
+{"id":"q010","question":"项目一的流式解析为什么选择手写而不用现成的 SDK？","answer":"因为计划里有条原则是先手写再上框架，框架会变概念不会变。代价是放弃了现成的流式状态管理、自动重试和消息持久化。","gold_doc":"ai-lab/projects/project1-stream-chat/docs/ADR.md","type":"cross","difficulty":"medium","must_contain":"先手写，再上框架"}
+{"id":"q011","question":"本地 Python 环境装在哪个目录，版本是多少？","answer":"G:\\Python\\Python312，版本 3.12.10；虚拟环境在仓库根 .venv 下。","gold_doc":"STATUS.md","type":"fact","difficulty":"easy","must_contain":"3.12.10"}
+{"id":"q012","question":"为什么 pip 装包要加 --only-binary :all: 这个参数？","answer":"强制只要预编译 wheel。不加的话 pip 会尝试源码构建，而本机没装 C 编译器，会卡在解析和构建上空转，看起来像网速慢但其实是 CPU 空转。","gold_doc":"ai-lab/docs/windows-quickstart.md","type":"code","difficulty":"medium","must_contain":"only-binary"}
+{"id":"q013","question":"rerank 和向量检索的区别是什么？","answer":"","gold_doc":"","type":"unanswerable","difficulty":"-","must_contain":""}
+{"id":"q014","question":"这个项目用的 GPU 型号是什么？","answer":"","gold_doc":"","type":"unanswerable","difficulty":"-","must_contain":""}
+{"id":"q015","question":"项目每个月的云服务器费用是多少？","answer":"","gold_doc":"","type":"unanswerable","difficulty":"-","must_contain":""}
+{"id":"q016","question":"团队的 Slack 频道叫什么名字？","answer":"","gold_doc":"","type":"unanswerable","difficulty":"-","must_contain":""}
+{"id":"q017","question":"为什么日志要自己写一个立刻 flush 的 handler？","answer":"因为 Python 的日志在输出目标是文件而不是终端时默认是块缓冲的，要攒够一个缓冲区才落盘。后果是点了停止想看服务端的请求被取消，却要等好几秒甚至等到下一次请求才出现。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"code","difficulty":"hard","must_contain":"flush"}
+{"id":"q018","question":"评估脚本里的稳定性指标是测什么的？","answer":"同样输入多跑几次结果一致的比例。用 jitter 上游做对照实验验证过门禁真的能拦：默认上游 100%，jitter 上游 0%。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"cross","difficulty":"hard","must_contain":"稳定性"}
+{"id":"q019","question":"项目一后端日志写在哪个文件里？","answer":"logs\\app.err.log，应用日志；uvicorn 的访问日志在 logs\\app.out.log。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"fact","difficulty":"easy","must_contain":"app.err.log"}
+{"id":"q020","question":"为什么自定义异常比抛 RuntimeError 好？","answer":"因为调用方可以靠 isinstance 分类型决定怎么办，而不是靠解析错误字符串。字符串匹配改一次报错文案就崩。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"fact","difficulty":"medium","must_contain":"isinstance"}
+{"id":"q021","question":"Pydantic 在 LLM 应用里的四个真实用途是什么？","answer":"校验请求、生成工具 schema（function calling 的 parameters）、结构化错误喂回模型让它自我修正、对象与 JSON 的双向转换。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"cross","difficulty":"hard","must_contain":"function calling"}
+{"id":"q022","question":"为什么需要 Pydantic 而不是手写校验？","answer":"类型注解本身就是校验规则，失败时给的是结构化数据（哪个字段、错在哪），而不是一大段字符串。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"fact","difficulty":"medium","must_contain":"结构化"}
+{"id":"q023","question":"FastAPI 的本质是什么？","answer":"把类型注解变成运行时行为：参数类型自动解析和校验，返回类型自动序列化并生成接口文档，async def 支持并发。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"cross","difficulty":"medium","must_contain":"类型注解变成运行时行为"}
+{"id":"q024","question":"自定义异常要怎么分类型处理？","answer":"按业务语义分成不同类型，比如网络失败可以重试、401 和 403 是 key 配错了重试无用、429 限流要退避重试、首 token 超时应该换备用模型降级。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"cross","difficulty":"medium","must_contain":"降级"}
+{"id":"q025","question":"流式响应为什么对 LLM 应用特别重要？","answer":"因为总耗时差不多，但首字延迟能差十倍，用户盯着空白屏幕和立刻看到字动起来是完全不同的体感。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"cross","difficulty":"medium","must_contain":"首字"}
+{"id":"q026","question":"测试流式接口最容易犯什么错？","answer":"只断言状态码是 200 就以为测过了。流式接口最容易坏的恰恰是内容，少个空行或字段名写错时状态码还是 200。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"cross","difficulty":"hard","must_contain":"状态码"}
+{"id":"q027","question":"为什么项目一的验收测试要起真进程而不是用进程内测试？","answer":"因为进程内测试不经过真实 socket，客户端断开后上游有没有停这类行为根本测不了，必须起真进程真 HTTP。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"cross","difficulty":"hard","must_contain":"真进程"}
+{"id":"q028","question":"数据集里哪个陷阱和订阅取消日期有关？","answer":"取消日期被钳制过，不能晚于数据生成的时间点，否则会出现未来日期。","gold_doc":"STATUS.md","type":"fact","difficulty":"medium","must_contain":"陷阱"}
+{"id":"q029","question":"MCP 和普通 function calling 的机制级区别是什么？","answer":"MCP 是独立的进程通过标准传输协议通信，工具在进程外；function calling 是模型输出结构化调用意图由宿主执行。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"cross","difficulty":"hard","must_contain":"MCP"}
+{"id":"q030","question":"为什么前端要用 TextDecoder 并带 stream 选项？","answer":"因为 UTF-8 多字节字符可能被切在两个 chunk 之间，不带 stream 选项会解码出乱码。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"code","difficulty":"hard","must_contain":"TextDecoder"}

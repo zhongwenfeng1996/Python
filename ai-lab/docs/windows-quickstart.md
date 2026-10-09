@@ -362,6 +362,38 @@ foreach ($t in "tenants","users","subscriptions","events","payments") {
 | `参数名 -r 不明确` / `cp -r` 失败 | `cp` 是 `Copy-Item` 别名，参数不同 | `Copy-Item -Recurse`、`Remove-Item -Recurse -Force` |
 | `FATAL: role "Administrator" does not exist` | Windows 默认用户名不是 PG 超级用户 | 设 `$env:PGUSER="postgres"`（+ `$env:PGPASSWORD`）或加 `-U postgres` |
 | 多个 Python 打架 | PATH 里有多份 Python | `py -0p` 看清单，用 `py -3.12` 精确定位；`where.exe python` 看优先级 |
+| `pip install` **卡住不动**：CPU 一直涨、内存很小、缓存里没有下载文件 | pip 在尝试**源码构建**（本机没装 C 编译器） | 加 `--only-binary :all:` 强制只要预编译 wheel，见下面 |
+
+### pip 装包卡住：为什么必须加 `--only-binary :all:`
+
+**本机实测**：装 numpy 时 `pip install numpy --index-url <清华镜像>` 跑了 **300 秒还没完**。
+症状很有迷惑性：
+
+```
+CPU 占用    : 301 秒（一直在算）
+内存占用    : 只有 47 MB
+下载缓存    : 没有任何新文件
+镜像连通性  : HTTP 200，0.8 秒响应（网速完全正常）
+```
+
+**结论：它不是在下载，是在"解析 + 尝试源码构建"。** 本机没装 MSVC/Build Tools，
+pip 找不到预编译 wheel 就会去构建，然后在 CPU 上空转。
+
+**修法 —— 强制只用预编译 wheel：**
+
+```powershell
+& G:\转型\.venv\Scripts\python.exe -m pip install numpy `
+    --only-binary :all: `
+    --index-url https://pypi.tuna.tsinghua.edu.cn/simple `
+    --progress-bar off --timeout 30
+# 实测：14.4 秒装完（numpy 2.5.3）
+```
+
+加上这几个参数后，**装不上就会立刻报错**而不是无限空转 —— 早失败比慢失败好得多。
+
+> ⚠️ **副作用要知道**：纯 Python 包（源码分发，如 `jieba`）会被这个参数**拒绝**，
+> 报 `No matching distribution found`。那种包要么去掉 `--only-binary`，
+> 要么装 Build Tools。本仓库的依赖都不需要编译，所以默认加上它更安全。
 
 ### 执行策略：为什么改了还是被拦
 
