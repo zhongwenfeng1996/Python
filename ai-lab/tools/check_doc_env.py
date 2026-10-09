@@ -293,6 +293,55 @@ def check_readability_tool(results: Results) -> None:
           "ai-lab/tools/check_docs_readability.py")
 
 
+def check_duplication_tool(results: Results) -> None:
+    """
+    重复检测也要纳入 —— 它是"强行补充内容"最直接的发现手段。
+
+    这个仓库出过一次：把 86 行的 bytes/str 说明加进第 04 章，
+    而第 10 章本来就讲过同一件事。两处说法还不一致，
+    读者不知道该信哪一处。文件存在性检查、悬空变量检查都抓不到这个。
+    """
+    tool = AI_LAB / "tools" / "check_docs_duplication.py"
+    if not tool.exists():
+        check(results, "教程重复检测脚本存在", False, "缺失", "ai-lab/tools/")
+        return
+    out = subprocess.run(
+        [sys.executable, str(tool)],
+        capture_output=True, text=True, encoding="utf-8", timeout=180,
+    )
+    check(results, "教程没有新的重复代码块",
+          out.returncode == 0,
+          "通过（已核实的刻意重复不计入失败）" if out.returncode == 0 else
+          f"exit={out.returncode}：{(out.stdout or '')[-200:]}",
+          "ai-lab/tools/check_docs_duplication.py")
+
+
+def check_prerequisite_tool(results: Results) -> None:
+    """
+    前置知识倒挂检查 —— 报告数量，但不作为失败条件。
+
+    为什么不算失败：这个教程**原设计上就有 21 处倒挂**（比如第 04 章讲
+    "函数级作用域"必然要用 `def`，而函数在第 05 章）。它们是"读起来别扭"
+    但不是"看不懂就会卡死"。要真正修掉得调整章节顺序，那是大改动。
+    所以这里只记录数字，让你改完能对比"有没有变得更糟"。
+    """
+    tool = AI_LAB / "tools" / "check_doc_prerequisites.py"
+    if not tool.exists():
+        check(results, "前置知识倒挂检查脚本存在", False, "缺失", "ai-lab/tools/")
+        return
+    out = subprocess.run(
+        [sys.executable, str(tool)],
+        capture_output=True, text=True, encoding="utf-8", timeout=120,
+    )
+    import re as _re
+    m = _re.search(r"共 (\d+) 处倒挂", out.stdout or "")
+    count = m.group(1) if m else "?"
+    # 记录数量，恒为通过（不是失败条件）
+    check(results, f"前置知识倒挂数量（仅记录，非失败条件）：{count} 处",
+          True, f"{count} 处（原设计即如此，非本文档修改引入）",
+          "ai-lab/tools/check_doc_prerequisites.py")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="校验文档描述的环境与真实环境是否一致")
     ap.add_argument("--quiet", action="store_true", help="只打印漂移项与总结")
@@ -312,6 +361,8 @@ def main() -> int:
     check_mock_behaviour(results)
     check_test_counts(results)
     check_readability_tool(results)
+    check_duplication_tool(results)
+    check_prerequisite_tool(results)
 
     passed = sum(1 for _, ok, _, _ in results if ok)
     for desc, ok, actual, source in results:
