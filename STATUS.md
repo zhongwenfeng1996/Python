@@ -23,8 +23,9 @@
 | Python | ✅ `G:\Python\Python312`（3.12.10，官网静默安装） |
 | 虚拟环境 | ✅ `G:\转型\.venv`（依赖已装，pip 走清华镜像） |
 | 一键初始化 | ✅ `.\setup.ps1`（探测解释器 → 建 venv → 装依赖 → 自检，已实测跑通） |
-| git | ✅ 5 个 commit，分支 `main`；**远端未推**（缺 GitHub 凭据） |
-| 已知环境坑 | 无 `pwsh`；`.ps1` 必须带 BOM；`pip.ini` 在中文路径下不可用；pypi.org 不可达 |
+| git | ✅ 14 个 commit，分支 `main`，**已推送到 GitHub**（build in public 已开始） |
+| 公开仓库 | ✅ <https://github.com/zhongwenfeng1996/Python>（本地与远端 commit 一致） |
+| 已知环境坑 | 无 `pwsh`；`.ps1` 必须带 BOM；`pip.ini` 在中文路径下不可用；pypi.org 不可达；`gh` 写不进自己的配置目录（改用 GCM 做凭据助手） |
 
 ---
 
@@ -116,7 +117,9 @@
 
 ### P2 · 之后
 
-- [ ] 把仓库推到 GitHub，开始 build in public（缺你的账号凭据）
+- [x] ~~把仓库推到 GitHub，开始 build in public~~ → <https://github.com/zhongwenfeng1996/Python>
+      推到后就有一个"别人能打开看"的产物了 —— 计划 §11 里说的
+      "对抗空窗期叙事"靠的就是这个，越早越好。
 - [ ] 写第 1 篇技术文章《手写 SSE 流式解析》
 - [ ] 把 MCP Server 接进真实客户端（Claude Desktop / Cursor）验证一次
 
