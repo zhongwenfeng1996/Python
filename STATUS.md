@@ -89,6 +89,17 @@
       - [x] `verify_backend_demos.py`：逐个跑示例并校验输出，已接入一致性检查
       - [x] README 写明前置门槛、章节顺序理由、**未覆盖内容的诚实清单**
 - [ ] 项目二：RAG 全链路（解析、切片、pgvector、rerank、引用）
+      - [x] 架构决策（6 条 ADR，含备选方案与为什么不选）
+      - [x] 语料：仓库自己的 24 篇文档（自我排除，防评估泄漏）
+      - [x] 切块：三种策略可对比（heading / paragraph / fixed）
+      - [x] 检索：稠密 / 稀疏 BM25 / RRF 混合，三通道可对比
+      - [x] 评估：30 条评估集 + recall@k / MRR / 拒答 + 门禁
+      - [x] **基线指标产出**：sparse recall@5=1.0 / MRR=0.756；dense 0.654/0.455
+      - [x] 三个反直觉发现已记录（稠密"找得到排不好"、混合反而更差、切块预测被推翻）
+      - [ ] 评估集扩到 ≥50 条
+      - [ ] rerank + 生成引用 + 不足则弃答
+      - [ ] 接入真实 embedding 并对比提升幅度
+      - [ ] pgvector（等 Docker：**待开 BIOS 的 SVM Mode**）
 - [ ] 项目三：Text-to-SQL + 语义层 + 图表 + SQL 安全
 - [ ] Docker Compose 一键启动
 - [ ] CI（lint + 测试 + 评估门禁）
