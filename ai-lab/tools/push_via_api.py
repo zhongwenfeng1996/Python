@@ -135,10 +135,79 @@ def changed_files(commit: str) -> list[str]:
     return files
 
 
+def remote_is_subset_of_local(remote_sha: str, token: str,
+                              max_commits: int = 60) -> tuple[bool, list[str]]:
+    """
+    判断远端的内容是否已被本地完全包含（决定 force 覆盖是否安全）。
+
+    危险只有一种：**远端有一个文件，本地没有**（force 会让它消失）。
+    所以只需要比**文件集合与内容**：
+
+        remote tree 里的每个文件，都能在 local tree 里找到、且 blob 相同
+
+    满足 ⇒ 远端的任何内容都已在本地 ⇒ force 不丢东西。
+
+    ⚠️ 这里踩过一个真 bug：第一版沿远端历史逐个 commit 做
+    git diff <parent> <tree>。但 force 覆盖会把被丢弃的 commit 对象
+    从本地清掉（不再被任何 ref 引用 → 最终 gc），于是 git diff 报
+    atal: bad object，检查直接崩。
+    **改成比文件集合就绕开了这个依赖** —— 不需要那些 commit 对象存在。
+
+    远端文件列表走 API 递归取（远端可能用了本地没有的 tree 对象，
+    不能靠 git 读远端 tree）。
+    """
+    lines: list[str] = []
+
+    # 本地文件 -> blob
+    ls = git("ls-tree", "-r", "HEAD")
+    local_blobs: dict[str, str] = {}
+    for line in ls.splitlines():
+        if "\t" not in line:
+            continue
+        meta, path = line.split("\t", 1)
+        parts = meta.split()
+        if len(parts) >= 3:
+            local_blobs[path] = parts[2]
+
+    # 远端文件 -> blob
+    info = api("GET", f"/repos/{OWNER}/{NAME}/git/commits/{remote_sha}", token)
+    remote_tree = info["tree"]["sha"]
+    tree_data = api("GET",
+                    f"/repos/{OWNER}/{NAME}/git/trees/{remote_tree}?recursive=1",
+                    token)
+    remote_blobs: dict[str, str] = {}
+    for item in tree_data.get("tree", []):
+        if item.get("type") == "blob":
+            remote_blobs[item["path"]] = item["sha"]
+
+    lines.append(f"远端文件数 {len(remote_blobs)}   本地文件数 {len(local_blobs)}")
+
+    missing = [p for p in remote_blobs if p not in local_blobs]
+    differing = [p for p, sha in remote_blobs.items()
+                 if p in local_blobs and local_blobs[p] != sha]
+
+    if missing:
+        lines.append(f"⚠️ 远端有 {len(missing)} 个文件本地没有（force 会丢掉）：")
+        lines += [f"   {p}" for p in sorted(missing)[:10]]
+    if differing:
+        lines.append(f"⚠️ {len(differing)} 个文件内容不同（本地版本会生效）：")
+        lines += [f"   {p}" for p in sorted(differing)[:10]]
+    if not missing and not differing:
+        lines.append("✅ 远端每个文件都能在本地找到，且内容相同")
+
+    return (not missing and not differing), lines
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="真正推送（默认只预览）")
     ap.add_argument("--commit", default="HEAD", help="要推送的本地提交")
+    ap.add_argument(
+        "--allow-overwrite", action="store_true",
+        help="远端有本地缺失/内容不同的文件时也继续（force）。"
+             "用于**你自己的**历史分叉（例如本地刚删了几个文件、"
+             "或本地改进了某个文件）。会对远端做 force 更新 —— "
+             "如果远端可能有别人的提交，不要加这个参数。")
     args = ap.parse_args()
 
     token = get_token()
@@ -164,11 +233,43 @@ def main() -> int:
     is_ancestor = subprocess.run(
         ["git", "-C", str(REPO), "merge-base", "--is-ancestor", remote_sha, sha_local],
         capture_output=True)
+    need_override = False
     if is_ancestor.returncode != 0:
-        print("  ❌ 远端的提交不是本地的祖先 —— 远端可能有其他人的新提交。")
-        print("     为了不覆盖别人的工作，脚本拒绝继续。请先手动 git fetch 合并。")
-        return 2
-    print("  ✅ 远端提交是本地祖先，可以安全快进")
+        # 远端不是本地祖先。**不要立刻拒绝** —— 先判断是不是"内容等价的历史分叉"。
+        #
+        # 为什么需要这个判断（实测场景）：
+        #   用本脚本推送一次后，远端多了一个 GitHub 生成的提交；
+        #   如果本地在那之后再 amend（比如修提交消息里的 BOM），
+        #   本地与远端就在"内容相同"的前提下分叉了：
+        #       tree 一样，但 commit 不是彼此的祖先
+        #   这时既不能快进，也不该盲目拒绝 —— 需要看**内容是否等价**。
+        # 正确判据：**远端的每一次变更是否都已体现在本地**。
+        # 沿远端历史往回走，逐个提交取它相对父提交的变更文件，
+        # 检查这些文件在本地 HEAD 里存在且 blob 相同。
+        # 全部满足 → 远端没有本地缺失的内容 → force 安全。
+        print("  ⚠️ 远端不是本地祖先 —— 检查它是否已被本地完全包含…")
+        subset_ok, detail = remote_is_subset_of_local(remote_sha, token)
+        for line in detail:
+            print(f"     {line}")
+        if subset_ok:
+            need_override = True
+            print("     → 远端变更都已在本地体现，将用 force 更新（内容不丢）")
+        elif args.allow_overwrite:
+            # 明确要求覆盖。用于"本地主动删了文件 / 本地改进了文件"这类
+            # **自己的**历史分叉 —— 上面列出的差异正是我们想要的差异。
+            need_override = True
+            print("     ⚠️ 上面这些差异按 --allow-overwrite 处理：")
+            print("         · 远端有而本地无的文件 → 会被删除（这是本地的意图）")
+            print("         · 内容不同的文件 → 采用本地版本")
+            print("     → 将对远端做 force 更新")
+        else:
+            print("  ❌ 远端有本地缺失或不同的内容 —— 拒绝覆盖。")
+            print("     如果你确认这是**你自己的**历史分叉（如刚删了文件、")
+            print("     或本地改进了某文件），加 --allow-overwrite 重试。")
+            print("     如果远端可能有别人的提交，请不要加，先 git fetch 合并。")
+            return 2
+    if not need_override:
+        print("  ✅ 远端提交是本地祖先，可以安全快进")
     print()
 
     # 远端 tree
@@ -223,9 +324,13 @@ def main() -> int:
     print(f"  新 commit : {commit['sha'][:8]}")
 
     # 更新 ref
+    # force 只在"内容等价的历史分叉"时才置 True（见上面的安全检查）。
+    # 有 force 意味着**丢弃远端的那个提交对象**（但它的内容已在我们的 tree 里，
+    # 所以不会丢失任何文件内容）。
     api("PATCH", f"/repos/{OWNER}/{NAME}/git/refs/heads/main", token,
-        {"sha": commit["sha"], "force": False})
-    print(f"  ✅ refs/heads/main -> {commit['sha'][:8]}")
+        {"sha": commit["sha"], "force": bool(need_override)})
+    print(f"  ✅ refs/heads/main -> {commit['sha'][:8]}"
+          f"{'（force）' if need_override else ''}")
     print()
     print("=" * 78)
     print("  推送完成（通过 API）。")
