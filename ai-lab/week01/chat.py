@@ -291,7 +291,14 @@ def main() -> int:
         stats["ttft_list"].append(ttft)
         stats["slowest"] = max(stats["slowest"], elapsed)
 
-        source = "usage" if usage else "估算"
+        # 用 usage 里**实际可取到的数值**反推来源，而不是 `if usage`。
+        #
+        # 为什么：`if usage` 只看真假值。某些兼容端点会返回结构完整但数值全为 0
+        # 的 usage（{"prompt_tokens": 0, ...}）—— 它是真值，标签会写成 "usage"，
+        # 可上面两行的 `or` 已经回退到估算值了。标签与数字对不上，
+        # 比"没有统计"更容易误导人。改成从最终采用的数值反推，二者永远一致。
+        used_usage = bool(usage and (in_tokens or out_tokens))
+        source = "usage" if used_usage else "估算"
         print(f"\n\033[90m[{source}] in {in_tokens} · out {out_tokens} · "
               f"${turn_cost:.4f} · TTFT {ttft:.2f}s · 总 {elapsed:.2f}s\033[0m")
 
