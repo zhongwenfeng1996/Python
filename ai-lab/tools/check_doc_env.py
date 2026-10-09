@@ -318,12 +318,14 @@ def check_duplication_tool(results: Results) -> None:
 
 def check_prerequisite_tool(results: Results) -> None:
     """
-    前置知识倒挂检查 —— 报告数量，但不作为失败条件。
+    前置知识倒挂检查 —— 现在是**硬规则**（必须 0 处）。
 
-    为什么不算失败：这个教程**原设计上就有 21 处倒挂**（比如第 04 章讲
-    "函数级作用域"必然要用 `def`，而函数在第 05 章）。它们是"读起来别扭"
-    但不是"看不懂就会卡死"。要真正修掉得调整章节顺序，那是大改动。
-    所以这里只记录数字，让你改完能对比"有没有变得更糟"。
+    曾经这里写的是"仅记录，不算失败"，因为原设计就有 21 处倒挂，
+    修它们要动章节顺序。2026-10 重排章节后倒挂降到 0，
+    规则随之升级：**再出现倒挂就是失败。**
+
+    为什么值得当硬规则：新手看到没学过的写法不会"跳过继续读"，
+    而是卡在那里怀疑自己 —— 这是教程质量里最容易被忽视、代价又最高的一项。
     """
     tool = AI_LAB / "tools" / "check_doc_prerequisites.py"
     if not tool.exists():
@@ -331,15 +333,45 @@ def check_prerequisite_tool(results: Results) -> None:
         return
     out = subprocess.run(
         [sys.executable, str(tool)],
-        capture_output=True, text=True, encoding="utf-8", timeout=120,
+        capture_output=True, text=True, encoding="utf-8", timeout=180,
     )
+    stdout = out.stdout or ""
     import re as _re
-    m = _re.search(r"共 (\d+) 处倒挂", out.stdout or "")
-    count = m.group(1) if m else "?"
-    # 记录数量，恒为通过（不是失败条件）
-    check(results, f"前置知识倒挂数量（仅记录，非失败条件）：{count} 处",
-          True, f"{count} 处（原设计即如此，非本文档修改引入）",
-          "ai-lab/tools/check_doc_prerequisites.py")
+    # 匹配新输出："共 N 处倒挂" 或 "[ok] 没有发现前置倒挂（两层都干净）"
+    m = _re.search(r"共 (\d+) 处倒挂", stdout)
+    if m:
+        count, ok = m.group(1), False
+        summary = f"{count} 处（两层合计）"
+    elif "没有发现前置倒挂" in stdout:
+        ok, summary = True, "0 处（基础篇 10 章 + 后端篇 6 个示例）"
+    else:
+        ok, summary = False, f"无法解析输出：{stdout[-200:]}"
+    check(results, "零前置倒挂（第 N 章只用第 1..N 章教过的写法）",
+          ok, summary, "ai-lab/tools/check_doc_prerequisites.py")
+
+
+def check_backend_demos(results: Results) -> None:
+    """
+    后端篇（第二层）的示例必须全部能跑，且输出与正文一致。
+
+    为什么单列一项：后端篇的示例是**完整可运行文件**，而且依赖 FastAPI /
+    Pydantic / httpx 的具体版本行为（本项目就踩过 `TestClient` 被标废弃）。
+    不把它们纳入日常检查，改一次依赖或改一次示例就可能悄悄坏掉。
+    """
+    verifier = AI_LAB / "python_basics" / "backend" / "verify_backend_demos.py"
+    if not verifier.exists():
+        check(results, "后端篇示例验证脚本存在", False, "缺失",
+              "ai-lab/python_basics/backend/")
+        return
+    out = subprocess.run(
+        [sys.executable, str(verifier)],
+        capture_output=True, text=True, encoding="utf-8", timeout=300,
+    )
+    ok = out.returncode == 0
+    # 从输出里抠出 "N 项失败" 或成功那行，作为摘要
+    summary = "全部示例通过" if ok else (out.stdout or "")[-200:]
+    check(results, "后端篇 6 个示例都能跑且输出与正文一致", ok, summary,
+          "ai-lab/python_basics/backend/verify_backend_demos.py")
 
 
 def main() -> int:
@@ -363,6 +395,7 @@ def main() -> int:
     check_readability_tool(results)
     check_duplication_tool(results)
     check_prerequisite_tool(results)
+    check_backend_demos(results)
 
     passed = sum(1 for _, ok, _, _ in results if ok)
     for desc, ok, actual, source in results:

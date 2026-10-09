@@ -35,7 +35,35 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+# 第一层的章节文件名（用于显示）
 DOCS = REPO / "ai-lab" / "python_basics" / "docs"
+BACKEND_DEMOS = REPO / "ai-lab" / "python_basics" / "backend" / "demos"
+
+# 第二层（后端篇）的章节编号。
+#
+# 为什么从 11 开始而不用 01-06：
+#   后端篇**整层都以前 10 章为前置**（README 里写明的硬门槛）。
+#   用 11-16 编号，`introduced_at <= chapter_no` 这条判断就自动成立 ——
+#   基础篇教过的任何东西在后端篇里都不算前置倒挂，不需要额外写规则。
+BACKEND_OFFSET = 10
+
+# 后端篇新增的章节映射（叠加在 FEATURE_CHAPTER 之上）
+#
+# ⚠️ 这张表也会过期。写它的时候踩过一次：最初把 `ASGITransport` 排在第 06 章
+#    （测试），但第 04、05 章的示例**本来就要用它在进程内发请求** ——
+#    于是两章都报了倒挂。修正方式是承认事实：**"怎么在进程内请求一个 app"
+#    是第 04 章就要会的基础技能，不是测试专属。**
+BACKEND_FEATURE_CHAPTER: dict[str, int] = {
+    "Pydantic BaseModel": BACKEND_OFFSET + 1,   # 第 01 章 Pydantic 基础
+    "Literal": BACKEND_OFFSET + 1,
+    "field_validator": BACKEND_OFFSET + 2,
+    "FastAPI app": BACKEND_OFFSET + 4,
+    "@app. 路由": BACKEND_OFFSET + 4,
+    "ASGITransport": BACKEND_OFFSET + 4,        # 第 04 章：进程内请求（测试的基础）
+    "StreamingResponse": BACKEND_OFFSET + 5,
+    "async generator": BACKEND_OFFSET + 5,
+    "pytest fixture": BACKEND_OFFSET + 6,
+}
 
 # 特性 -> 首次出现的章节号。
 # 只收"学习者必须被教过才能读懂"的东西；纯语法糖（比如 f-string）也会造成卡顿，所以也收。
@@ -229,7 +257,91 @@ def _feature_present(feature: str, code: str) -> bool:
         return bool(re.search(r"^\s*@\w+", code, re.M))
     if feature == "logging":
         return "logging" in code
+    # ---- 后端篇（第二层）新增 ----
+    if feature == "Pydantic BaseModel":
+        return bool(re.search(r"\(\s*BaseModel\s*\)", code))
+    if feature == "field_validator":
+        return "@field_validator" in code
+    if feature == "Literal":
+        return bool(re.search(r"\bLiteral\[", code))
+    if feature == "FastAPI app":
+        return bool(re.search(r"\bFastAPI\s*\(", code))
+    if feature == "@app. 路由":
+        return bool(re.search(r"@app\.(get|post|put|delete|patch)\s*\(", code))
+    if feature == "StreamingResponse":
+        return "StreamingResponse" in code
+    if feature == "async generator":
+        # async def 里有 yield —— 这是"异步生成器"，第一层没讲过
+        return bool(re.search(r"async\s+def[^\n]*\n(?:.*\n)*?\s+yield\b", code))
+    if feature == "pytest fixture":
+        return "@pytest.fixture" in code
+    if feature == "ASGITransport":
+        return "ASGITransport" in code
     return False
+
+
+def find_backend_violations(chapter_no: int, text: str) -> list[str]:
+    """
+    后端篇的检查。
+
+    和后端篇的文档不同，这里要检查的是**完整的 .py 文件**（不是文档里的片段），
+    所以直接扫整个文件，不用找代码块。先去掉注释与字符串。
+
+    特性表叠加 BACKEND_FEATURE_CHAPTER —— 后端篇自带的新特性从第 11 章起算，
+    而基础篇的一切（1..10）都视为已教过（README 里写明了这个硬门槛）。
+    """
+    problems: list[str] = []
+    merged = {**FEATURE_CHAPTER, **BACKEND_FEATURE_CHAPTER}
+    source = _strip(text)
+    for feature, introduced_at in merged.items():
+        if feature in NOT_A_PREREQUISITE:
+            continue
+        if introduced_at <= chapter_no:
+            continue
+        if _feature_present(feature, source):
+            problems.append(
+                f"用了「{feature}」，但它在本层第 {introduced_at - BACKEND_OFFSET} 章才教")
+    return problems
+
+
+def _strip(code: str) -> str:
+    """去注释与字符串。
+
+    为什么后端篇的示例也必须要做这一步：那是一个完整 .py 文件，
+    里面的**文档字符串**会大量提到 "FastAPI"、"StreamingResponse" 这些词，
+    不去掉的话每个文件都会报满倒挂。
+    """
+    out = []
+    in_docstring = False
+    for line in code.splitlines():
+        stripped = line.strip()
+        # 三引号文档字符串：成对出现，简单处理
+        if stripped.startswith('"""') or stripped.startswith("'''"):
+            quotes = stripped[:3]
+            if stripped.count(quotes) >= 2 and len(stripped) > 3:
+                out.append("")          # 单行 docstring
+                continue
+            in_docstring = not in_docstring
+            out.append("")
+            continue
+        if in_docstring:
+            out.append("")
+            continue
+        result: list[str] = []
+        quote = None
+        for ch in line:
+            if quote:
+                if ch == quote:
+                    quote = None
+                continue
+            if ch in "\"'":
+                quote = ch
+                continue
+            if ch == "#":
+                break
+            result.append(ch)
+        out.append("".join(result))
+    return "\n".join(out)
 
 
 def main() -> int:
@@ -238,6 +350,8 @@ def main() -> int:
     ap.add_argument("--dir", type=Path, default=DOCS,
                     help="改成别的目录 —— 用来对比「改动前 / 改动后」，"
                          "确认一次修改是真的减少了倒挂、还是只是把问题挪了个位置")
+    ap.add_argument("--no-backend", action="store_true",
+                    help="跳过第二层（后端篇）的检查")
     args = ap.parse_args()
 
     docs_dir = args.dir
@@ -248,10 +362,14 @@ def main() -> int:
     print("=" * 78)
     print("  前置知识倒挂检查 · 第 N 章的示例有没有用到第 M>N 章才教的东西")
     print("=" * 78)
-    print(f"  目录：{docs_dir}")
+    print(f"  第一层（基础篇）：{docs_dir}")
+    if not args.no_backend:
+        print(f"  第二层（后端篇）：{BACKEND_DEMOS}")
     print()
 
     total = 0
+
+    print("—— 第一层 · 基础篇 ——")
     for doc in chapters:
         no = int(doc.name[:2])
         text = doc.read_text(encoding="utf-8")
@@ -260,20 +378,41 @@ def main() -> int:
         if problems:
             print(f"[{len(problems)} 处] {doc.name}")
             for p in problems:
-                # 同一章同一条特性只报一次，避免刷屏
                 print(f"        - {p}")
         else:
             print(f"[  ok  ] {doc.name}")
+
+    # ---- 第二层：后端篇 ----
+    if not args.no_backend:
+        print()
+        print("—— 第二层 · 后端篇（示例是完整 .py 文件）——")
+        demos = sorted(BACKEND_DEMOS.glob("[0-9][0-9]_*.py")) if BACKEND_DEMOS.exists() else []
+        demos = [d for d in demos if not d.name.startswith("__")]
+        if not demos:
+            print(f"[  --  ] 没找到示例（{BACKEND_DEMOS}）")
+        for demo in demos:
+            # 文件名 01_xxx.py -> 后端篇第 1 章 -> 全局第 11 章
+            local_no = int(demo.name[:2])
+            global_no = BACKEND_OFFSET + local_no
+            problems = find_backend_violations(
+                global_no, demo.read_text(encoding="utf-8"))
+            total += len(problems)
+            if problems:
+                print(f"[{len(problems)} 处] {demo.name}")
+                for p in problems:
+                    print(f"        - {p}")
+            else:
+                print(f"[  ok  ] {demo.name}")
 
     print()
     print("=" * 78)
     if total:
         print(f"  共 {total} 处倒挂。")
         print("  说明：这不一定都要改 —— 有些是刻意预告（读起来没问题），")
-        print("        但**高严重度**的几类（class / async / await）会让学习者真的卡住：")
-        print("        第 8 章才讲类，第 1 章就出现 class，读者只能跳过。")
+        print("        但「需要理解才能用」的那几类（def / class / async / 装饰器）")
+        print("        会让学习者真的卡住，必须调顺序或改写法。")
     else:
-        print("  [ok] 没有发现前置倒挂")
+        print("  [ok] 没有发现前置倒挂（两层都干净）")
     print("=" * 78)
     return 1 if total else 0
 

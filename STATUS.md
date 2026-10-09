@@ -78,6 +78,15 @@
       - [x] 8 个真实注入载荷全部被拒（`calc` 用 AST 解析，不用 eval）
       - [x] **不暴露 read_file / run_command** —— 有测试专门盯着这件事
       - [x] README 写清" MCP vs function calling"的机制级区别
+- [x] 教程重排 + 零前置硬化 —— `python_basics/docs/`
+      - [x] 章节重排（函数 05→04），21 处前置倒挂降到 **0**
+      - [x] 零前置成为**硬规则**（脚本强制，两层都查）
+      - [x] 新增 附-A-读懂一次模型API调用.md（承接从章节里挪出的 100 行）
+- [x] **第二层·后端篇** —— `python_basics/backend/`
+      - [x] 6 章：Pydantic 基础/进阶、自定义异常、FastAPI、流式 SSE、测试
+      - [x] **6 个可运行示例**，全部实测通过（含 7 条 pytest 用例）
+      - [x] `verify_backend_demos.py`：逐个跑示例并校验输出，已接入一致性检查
+      - [x] README 写明前置门槛、章节顺序理由、**未覆盖内容的诚实清单**
 - [ ] 项目二：RAG 全链路（解析、切片、pgvector、rerank、引用）
 - [ ] 项目三：Text-to-SQL + 语义层 + 图表 + SQL 安全
 - [ ] Docker Compose 一键启动

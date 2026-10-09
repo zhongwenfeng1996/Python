@@ -17,10 +17,18 @@ ai-lab/
 │   └── ...
 ├── tools/                      # 质量检查工具（分工见下）
 │   ├── env_report.py           # 手边有什么（解释器/依赖/编码）
-│   ├── check_doc_env.py        # 文档说的是不是真的（21 项一致性断言）
+│   ├── check_doc_env.py        # 文档说的是不是真的（22 项一致性断言）
 │   ├── check_docs_readability.py  # 教程有没有"没头没尾"的代码片段
 │   ├── check_docs_duplication.py  # 同一个知识点是不是在两章各讲了一遍
-│   └── check_doc_prerequisites.py # 第 N 章的示例有没有用到第 M>N 章才教的东西
+│   └── check_doc_prerequisites.py # 第 N 章有没有用到第 M>N 章才教的东西（两层）
+├── python_basics/              # Python 补给线（两层）
+│   ├── docs/                   #   第一层·基础篇：10 章，读懂 AI 应用代码
+│   │   ├── 01..10 章
+│   │   └── 附-A-读懂一次模型API调用.md
+│   └── backend/                #   第二层·后端篇：6 章，写出 FastAPI 服务
+│       ├── README.md
+│       ├── demos/              #     6 个可运行示例（每次提交都被实际跑一遍）
+│       └── verify_backend_demos.py
 ├── projects/
 │   ├── project1-stream-chat/   # 🎯 项目一：流式多模型对话
 │   └── mcp-minimal/            # 🎯 MCP Server 最小实验
@@ -42,19 +50,21 @@ ai-lab/
 |---|---|---|
 | `tools/env_report.py` | **手边有什么**（解释器、依赖、编码、目录） | 换机器 / 环境出问题时 |
 | `scripts/verify_dataset.py` | **数据里有什么**（31 条断言，"六个雷"在不在） | 改完数据生成器 |
-| `tools/check_doc_env.py` | **文档说的是不是真的**（21 项，下面四个都在里面） | 改完文档或路径之后 |
+| `tools/check_doc_env.py` | **文档说的是不是真的**（22 项，下面四个 + 后端示例都在里面） | 改完文档或路径之后 |
 | `tools/check_docs_readability.py` | **有没有没头没尾的代码片段**（悬空变量、未定义函数） | 加/改教程示例后 |
 | `tools/check_docs_duplication.py` | **同一个知识点是不是讲了两遍** | 往教程里补内容后 |
-| `tools/check_doc_prerequisites.py` | **第 N 章有没有用到第 M>N 章才教的东西** | 调整章节顺序或加示例后 |
+| `tools/check_doc_prerequisites.py` | **零前置**：第 N 章有没有用到第 M>N 章才教的（两层都查） | 调整章节顺序或加示例后 |
+| `python_basics/backend/verify_backend_demos.py` | **后端篇 6 个示例能不能跑出预期输出** | 改后端示例后 |
 
 ```powershell
 $py = "G:\转型\.venv\Scripts\python.exe"
 & $py ai-lab\tools\env_report.py
 & $py ai-lab\scripts\verify_dataset.py
-& $py ai-lab\tools\check_doc_env.py          # 一键跑下面三个 + 环境断言
+& $py ai-lab\tools\check_doc_env.py              # 一键兜住下面全部 + 环境断言
 & $py ai-lab\tools\check_docs_readability.py
 & $py ai-lab\tools\check_docs_duplication.py
 & $py ai-lab\tools\check_doc_prerequisites.py
+& $py ai-lab\python_basics\backend\verify_backend_demos.py
 ```
 
 > **为什么需要"重复检测"这种看起来多余的检查**：往教程里补内容时，
