@@ -177,8 +177,13 @@ async def _stream_once(
             except StopAsyncIteration:
                 break
             except asyncio.TimeoutError as exc:
+                # 用 :g 而不是 :.1f —— 实测踩到的：把 FIRST_TOKEN_TIMEOUT_S 设成 0.001 时，
+                # `{:.1f}` 会把 0.001 打成 "0.0"，报错变成
+                #   "首 token 超过 0.0s 未到达"
+                # 看起来像配置没生效，实际是格式化把精度吞掉了。
+                # `:g` 自动选合适的小数位：8 -> "8"，0.001 -> "0.001"。
                 raise FirstTokenTimeout(
-                    f"首 token 超过 {first_token_timeout:.1f}s 未到达"
+                    f"首 token 超过 {first_token_timeout:g}s 未到达"
                 ) from exc
 
             line = raw_line.strip()

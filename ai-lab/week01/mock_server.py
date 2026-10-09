@@ -253,6 +253,26 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args) -> None:  # 静音访问日志
         return
 
+    # ------------------------------------------------------------------
+    # 客户端提前断开时不要打出整段 traceback
+    # ------------------------------------------------------------------
+    # 实测踩到的：把下游应用设成"首 token 超时 1ms"时，应用会在握手阶段就掐断连接。
+    # 这时 http.server 在 `self.rfile.readline()` 抛出
+    #   ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接
+    # 而这个异常发生在 socketserver 内部 —— 我们**没法在 readline 那里加 try**。
+    #
+    # 后果不只是日志难看：它会让 mock 那个线程直接死掉，
+    # 于是"降级/中断"这类测试会莫名其妙地看到上游不可用，排查方向全错。
+    #
+    # ConnectionError 是 ConnectionAbortedError / ConnectionResetError /
+    # BrokenPipeError 的父类，一网打尽。silent=True 让 socketserver 不要
+    # 再向 stderr 打 traceback。
+    def handle_one_request(self) -> None:  # noqa: N802
+        try:
+            super().handle_one_request()
+        except ConnectionError:
+            self.close_connection = True
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="本地 OpenAI 兼容 mock 服务")
