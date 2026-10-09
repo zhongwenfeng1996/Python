@@ -39,20 +39,30 @@ DOCS = REPO / "ai-lab" / "python_basics" / "docs"
 
 # 特性 -> 首次出现的章节号。
 # 只收"学习者必须被教过才能读懂"的东西；纯语法糖（比如 f-string）也会造成卡顿，所以也收。
+#
+# ⚠️ 这张表必须与真实章节顺序同步！调整章节顺序后忘了改这里，
+#    检查器会报一堆假倒挂（本仓库重排 04/05 章时就踩过：`def` 明明已经在
+#    第 04 章教了，表里还写着 5，于是第 04 章自己报了 18 处"倒挂"）。
+#
+# 当前顺序（2026-10 重排后）：
+#   01 变量  02 字符串  03 列表字典  04 函数  05 循环与作用域
+#   06 异常与文件  07 模块  08 类  09 异步  10 调试
+#
+# 「只看名字就懂、不算前置」的白名单见 NOT_A_PREREQUISITE。
 FEATURE_CHAPTER: dict[str, int] = {
     "f-string": 2,
     "列表推导式": 3,
     "字典推导式": 3,
     "切片": 3,
     ".get(": 3,          # 字典的 get 方法
-    "for 循环": 4,
-    "while 循环": 4,
+    "def 定义函数": 4,    # ← 重排后从 5 提到 4（函数在"作用域"之前）
+    "lambda": 4,
+    "for 循环": 5,
+    "while 循环": 5,
     "try/except": 6,
-    "with 语句": 6,      # 01 章其实出现过，但正式讲在 06
+    "with 语句": 6,
     "读写文件": 6,
-    "def 定义函数": 5,
-    "lambda": 5,
-    "import": 7,         # 07 章才正式讲模块与导入
+    "import": 7,
     "虚拟环境": 7,
     "class": 8,
     "isinstance": 8,
@@ -61,8 +71,21 @@ FEATURE_CHAPTER: dict[str, int] = {
     "async": 9,
     "await": 9,
     "asyncio": 9,
-    "装饰器": 8,          # 08 章提到，07 章有 @ 的引子
+    "装饰器": 8,
     "logging": 10,
+}
+
+# 「看名字就知道意思」的东西 —— 不算前置倒挂。
+#
+# 这是刻意的尺度选择（和用户确认过）：只禁"需要理解才能用"的东西。
+#   - `for` / `if` / `import` / `with`：语法自解释，只要该节开头一句话交代
+#     它是什么，读者照抄也能跑，且不会因为"没被教过"而彻底卡死。
+#   - `def` / `class` / `async` / 装饰器 / 推导式 / 切片：不懂含义就会写出错代码，
+#     或者理解整段逻辑时断链 —— 这些必须"先教后用"。
+#
+# 效果：这个名单里的特性不再触发报警，也不会因为它们去强行改动章节顺序。
+NOT_A_PREREQUISITE = {
+    "for 循环", "while 循环", "import", "with 语句", "读写文件",
 }
 
 # 这些不算倒挂：它们是"读到就能猜出来"的常识，或者本章紧接着就会讲
@@ -134,6 +157,8 @@ def find_violations(chapter_no: int, text: str) -> list[str]:
             continue
         source = strip_comments(code)      # ★ 只看代码，不看注释
         for feature, introduced_at in FEATURE_CHAPTER.items():
+            if feature in NOT_A_PREREQUISITE:
+                continue          # 看名字就懂的语法，不算前置
             if introduced_at <= chapter_no:
                 continue          # 已经教过了
             if not _feature_present(feature, source):
@@ -189,7 +214,13 @@ def _feature_present(feature: str, code: str) -> bool:
     if feature == "dataclass":
         return "@dataclass" in code or "dataclasses" in code
     if feature == "Pydantic":
-        return "BaseModel" in code or "pydantic" in code
+        # 只在**真的用了** Pydantic 时才算，而不是"提到了这个包名"。
+        #
+        # 为什么（这个检查器踩过）：requirements.txt / pyproject.toml 那种
+        # 依赖清单里写着 `pydantic`，被当成了"第 07 章就在用 Pydantic"。
+        # 但那是"列出要装的包"，不是"用它写代码" —— 报出来是纯噪音。
+        # 同理，依赖清单里出现 fastapi / uvicorn 也不该算前置。
+        return bool(re.search(r"\bBaseModel\b|\bmodel_validate\b|\bField\s*\(", code))
     if feature in ("async", "await"):
         return bool(re.search(r"\bawait\b", code)) or "async def" in code
     if feature == "asyncio":

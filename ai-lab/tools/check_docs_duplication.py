@@ -133,6 +133,35 @@ def known_ok_reason(name_a: str, name_b: str) -> str | None:
     return None
 
 
+def answer_regions(text: str) -> list[tuple[int, int]]:
+    """
+    返回所有 `<details>...</details>` 的 [起行, 止行)。
+
+    为什么需要：练习的「参考答案」本质上就是题干的重复 ——
+    **这是刻意设计的，不是内容冗余。** 不把它们排除掉，
+    每个练习都会报一次"100% 重复"，噪音会淹没真正的问题。
+
+    这个检查器第一版就踩了：05 章练习 4 的题干和答案在同一个文件里
+    隔了 213 行，超过了"相邻块"的跳过阈值，于是被报成疑似重复。
+    """
+    regions = []
+    lines = text.splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith("<details>"):
+            start = i
+        elif start is not None and line.strip().startswith("</details>"):
+            regions.append((start, i))
+            start = None
+    if start is not None:
+        regions.append((start, len(lines)))
+    return regions
+
+
+def in_answer(lineno: int, regions: list[tuple[int, int]]) -> bool:
+    return any(lo <= lineno <= hi for lo, hi in regions)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="教程内容重复检测")
     ap.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD,
@@ -155,10 +184,13 @@ def main() -> int:
 
     items: list[tuple[str, int, str]] = []
     for doc in docs:
-        for lineno, body in code_blocks(doc.read_text(encoding="utf-8")):
-            if len(body) >= MIN_CHARS:
+        text = doc.read_text(encoding="utf-8")
+        regions = answer_regions(text)
+        for lineno, body in code_blocks(text):
+            if len(body) >= MIN_CHARS and not in_answer(lineno, regions):
                 items.append((doc.name, lineno, body))
-    print(f"  参与比较的代码块：{len(items)} 个")
+    print(f"  参与比较的代码块：{len(items)} 个"
+          f"（已排除练习题干与参考答案 —— 那是有意的重复）")
     print()
 
     fresh: list[tuple[float, str, int, str, int]] = []

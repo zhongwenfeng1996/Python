@@ -128,17 +128,48 @@ def check_unlabeled_blocks(path: Path, text: str) -> list[tuple[str, str]]:
     return problems
 
 
+def strip_comments_and_strings(code: str) -> str:
+    """
+    去掉注释**和字符串字面量**，只留真正的代码。
+
+    为什么必须去字符串（这个检查器踩过）：SSE 协议的标记本身就是字符串 `"data:"`，
+    于是每一段含 `"data: [DONE]"` 的示例都被报成"悬空变量 data"。
+    但那是**字符串内容**，不是变量引用 —— 报出来是纯噪音。
+
+    实现做了简化：按行扫，遇到引号就吞到下一个同类引号，不处理嵌套与转义细节。
+    教学代码里几乎没有"字符串内含未转义引号"的情况，够用。
+    """
+    out_lines = []
+    for line in code.splitlines():
+        result: list[str] = []
+        quote: str | None = None
+        for ch in line:
+            if quote:
+                if ch == quote:
+                    quote = None
+                continue
+            if ch in "\"'":
+                quote = ch
+                continue
+            if ch == "#":
+                break                      # 行内注释，后面都不要
+            result.append(ch)
+        out_lines.append("".join(result))
+    return "\n".join(out_lines)
+
+
 def check_dangling_vars(path: Path, text: str) -> list[tuple[str, str]]:
     """
     检查"用了但没解释来源"的变量。
 
     判定逻辑：
-      - 变量在代码块里出现过（被读取）
+      - 变量在代码块里出现过（被读取，且**不是字符串里的字面量**）
       - 它在本文件里**从未**出现在赋值左侧、函数参数、或解释性文字里
       → 报可疑
     """
     problems: list[tuple[str, str]] = []
-    code_text = "\n".join(body for _, _, body in find_code_blocks(text))
+    code_text = strip_comments_and_strings(
+        "\n".join(body for _, _, body in find_code_blocks(text)))
 
     for var in TRACKED_VARS:
         used = re.search(rf"\b{var}\b", code_text)
