@@ -1,0 +1,2592 @@
+{
+  "strategy": "heading",
+  "k": 5,
+  "abstain_threshold": 0.0,
+  "n_questions": 56,
+  "embedder": "local-hash-ngram:dim=256:n=2-3",
+  "n_chunks": 490,
+  "results": [
+    {
+      "mode": "dense",
+      "strategy": "heading",
+      "k": 5,
+      "n_answerable": 52,
+      "n_unanswerable": 4,
+      "recall@5": 0.4615,
+      "mrr": 0.2833,
+      "hit@1": 0.1731,
+      "abstain_acc": 0.0,
+      "elapsed_s": 0.48
+    },
+    {
+      "mode": "sparse",
+      "strategy": "heading",
+      "k": 5,
+      "n_answerable": 52,
+      "n_unanswerable": 4,
+      "recall@5": 0.9038,
+      "mrr": 0.6478,
+      "hit@1": 0.5,
+      "abstain_acc": 0.0,
+      "elapsed_s": 0.26
+    },
+    {
+      "mode": "hybrid",
+      "strategy": "heading",
+      "k": 5,
+      "n_answerable": 52,
+      "n_unanswerable": 4,
+      "recall@5": 0.7308,
+      "mrr": 0.4821,
+      "hit@1": 0.3077,
+      "abstain_acc": 0.0,
+      "elapsed_s": 0.75
+    },
+    {
+      "mode": "rerank",
+      "strategy": "heading",
+      "k": 5,
+      "n_answerable": 52,
+      "n_unanswerable": 4,
+      "recall@5": 0.8462,
+      "mrr": 0.6385,
+      "hit@1": 0.5,
+      "abstain_acc": 0.0,
+      "elapsed_s": 1.07
+    },
+    {
+      "mode": "llm",
+      "strategy": "heading",
+      "k": 5,
+      "n_answerable": 52,
+      "n_unanswerable": 4,
+      "recall@5": 0.9808,
+      "mrr": 0.8638,
+      "hit@1": 0.7885,
+      "abstain_acc": 0.0,
+      "elapsed_s": 2872.9
+    }
+  ],
+  "per_question": [
+    {
+      "id": "q001",
+      "question": "章节重排后 def 在第几章教？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/docs/04-函数.md",
+      "found_rank": 0,
+      "top_score": 0.3367,
+      "top1": "ai-lab/python_basics/docs/09-异步与并发.md"
+    },
+    {
+      "id": "q002",
+      "question": "首 token 超时的默认值是多少秒？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.3941,
+      "top1": "ai-lab/python_basics/docs/01-变量与类型.md"
+    },
+    {
+      "id": "q003",
+      "question": "MCP Server 最小实验提供了哪三个工具？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.5203,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q004",
+      "question": "为什么 MCP Server 不暴露 read_file 或 run_command？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 2,
+      "top_score": 0.5776,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q005",
+      "question": "为什么 .ps1 脚本必须带 UTF-8 BOM？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.4091,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q006",
+      "question": "改了 PowerShell 执行策略为什么脚本还是被拦？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.471,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q007",
+      "question": "数据集里共有几个已知陷阱？",
+      "mode": "dense",
+      "gold_doc": "STATUS.md",
+      "found_rank": 0,
+      "top_score": 0.3598,
+      "top1": "ai-lab/python_basics/docs/05-条件循环与作用域.md"
+    },
+    {
+      "id": "q008",
+      "question": "项目一现在有多少条测试通过？",
+      "mode": "dense",
+      "gold_doc": "STATUS.md",
+      "found_rank": 0,
+      "top_score": 0.3304,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q009",
+      "question": "SSE 每条消息为什么必须以空行结尾？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.4128,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q010",
+      "question": "项目一的流式解析为什么选择手写而不用现成的 SDK？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 0.4504,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q011",
+      "question": "本地 Python 环境装在哪个目录，版本是多少？",
+      "mode": "dense",
+      "gold_doc": "STATUS.md",
+      "found_rank": 0,
+      "top_score": 0.4764,
+      "top1": "ai-lab/python_basics/docs/README.md"
+    },
+    {
+      "id": "q012",
+      "question": "为什么 pip 装包要加 --only-binary :all: 这个参数？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.5994,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q013",
+      "question": "rerank 和向量检索的区别是什么？",
+      "mode": "dense",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.4339,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q014",
+      "question": "这个项目用的 GPU 型号是什么？",
+      "mode": "dense",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.4226,
+      "top1": "ai-lab/python_basics/docs/03-列表字典与推导式.md"
+    },
+    {
+      "id": "q015",
+      "question": "项目每个月的云服务器费用是多少？",
+      "mode": "dense",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.3653,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q016",
+      "question": "团队的 Slack 频道叫什么名字？",
+      "mode": "dense",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.3658,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q017",
+      "question": "为什么日志要自己写一个立刻 flush 的 handler？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 0.4819,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q018",
+      "question": "评估脚本里的稳定性指标是测什么的？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.3374,
+      "top1": "ai-lab/python_basics/docs/README.md"
+    },
+    {
+      "id": "q019",
+      "question": "项目一后端日志写在哪个文件里？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 5,
+      "top_score": 0.3642,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q020",
+      "question": "为什么自定义异常比抛 RuntimeError 好？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 5,
+      "top_score": 0.4689,
+      "top1": "ai-lab/python_basics/docs/06-异常与文件.md"
+    },
+    {
+      "id": "q021",
+      "question": "Pydantic 在 LLM 应用里的四个真实用途是什么？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 4,
+      "top_score": 0.5554,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q022",
+      "question": "为什么需要 Pydantic 而不是手写校验？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 3,
+      "top_score": 0.5352,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q023",
+      "question": "FastAPI 的本质是什么？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.4105,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q024",
+      "question": "自定义异常要怎么分类型处理？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.3558,
+      "top1": "ai-lab/python_basics/docs/04-函数.md"
+    },
+    {
+      "id": "q025",
+      "question": "流式响应为什么对 LLM 应用特别重要？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 0,
+      "top_score": 0.417,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q026",
+      "question": "测试流式接口最容易犯什么错？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 0,
+      "top_score": 0.3606,
+      "top1": "ai-lab/python_basics/docs/03-列表字典与推导式.md"
+    },
+    {
+      "id": "q027",
+      "question": "为什么项目一的验收测试要起真进程而不是用进程内测试？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 3,
+      "top_score": 0.4453,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q028",
+      "question": "数据集里哪个陷阱和订阅取消日期有关？",
+      "mode": "dense",
+      "gold_doc": "STATUS.md",
+      "found_rank": 0,
+      "top_score": 0.3402,
+      "top1": "ai-lab/python_basics/docs/07-模块与虚拟环境.md"
+    },
+    {
+      "id": "q029",
+      "question": "MCP 和普通 function calling 的机制级区别是什么？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.5644,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q030",
+      "question": "为什么前端要用 TextDecoder 并带 stream 选项？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 0.4972,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q031",
+      "question": "前端界面是怎么分发的，为什么没有引入打包工具？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.4255,
+      "top1": "ai-lab/python_basics/docs/04-函数.md"
+    },
+    {
+      "id": "q032",
+      "question": "服务端保存了对话上下文吗？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.3165,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q033",
+      "question": "为什么可选的模型不是通过配置文件管理的？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.3494,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q034",
+      "question": "验收时为什么要启动一个真实的服务器进程？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.3925,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q035",
+      "question": "时间字段的存储方式为什么会影响统计结果？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.3917,
+      "top1": "README.md"
+    },
+    {
+      "id": "q036",
+      "question": "用户来源字段存在什么数据质量问题？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.3601,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q037",
+      "question": "为什么不能直接对邮箱列做去重计数？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.3527,
+      "top1": "ai-lab/python_basics/docs/02-字符串与格式化.md"
+    },
+    {
+      "id": "q038",
+      "question": "哪些订阅是收不到钱的？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 0.2929,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q039",
+      "question": "退款记录在金额上有什么需要注意的？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.3964,
+      "top1": "ai-lab/python_basics/docs/README.md"
+    },
+    {
+      "id": "q040",
+      "question": "最近的登录数据能直接用来算趋势吗？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 4,
+      "top_score": 0.3424,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q041",
+      "question": "如果输出缓冲出问题，会造成什么现象？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.3591,
+      "top1": "ai-lab/python_basics/docs/02-字符串与格式化.md"
+    },
+    {
+      "id": "q042",
+      "question": "怎么证明质量指标不是摆设？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.3526,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q043",
+      "question": "第二层的教程假设读者已经会什么？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 0,
+      "top_score": 0.3725,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q044",
+      "question": "课程里为什么没有讲依赖注入、生命周期这些内容？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.415,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q045",
+      "question": "前端接收到的字符为什么会变成乱码？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.357,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q046",
+      "question": "调试信息为什么不能随便打印到输出？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 0,
+      "top_score": 0.3409,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q047",
+      "question": "服务器怎么判断一条消息收完了？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 0,
+      "top_score": 0.3551,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q048",
+      "question": "客户端代码怎么知道调用出错了？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 0,
+      "top_score": 0.3173,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q049",
+      "question": "数据集里的时区问题具体有多大的比例？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.3917,
+      "top1": "ai-lab/python_basics/docs/09-异步与并发.md"
+    },
+    {
+      "id": "q050",
+      "question": "教程一共分几层，各自目标是什么？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/README.md",
+      "found_rank": 0,
+      "top_score": 0.3503,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q051",
+      "question": "为什么教程要规定章节顺序不能乱？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/python_basics/docs/README.md",
+      "found_rank": 0,
+      "top_score": 0.3844,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q052",
+      "question": "为什么 MCP 的实验里没有放读取文件或执行命令的工具？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 2,
+      "top_score": 0.4534,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q053",
+      "question": "用什么工具检查文档里的说法和实际是否一致？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.3921,
+      "top1": "ai-lab/python_basics/README.md"
+    },
+    {
+      "id": "q054",
+      "question": "数据集里的渠道字段为什么不能直接分组统计？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.4222,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q055",
+      "question": "文档说活跃下跌、数据却说上涨，这种矛盾是怎么发现的？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 0.4447,
+      "top1": "README.md"
+    },
+    {
+      "id": "q056",
+      "question": "为什么 .ps1 文件必须要加字节顺序标记？",
+      "mode": "dense",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 2,
+      "top_score": 0.3764,
+      "top1": "README.md"
+    },
+    {
+      "id": "q001",
+      "question": "章节重排后 def 在第几章教？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/docs/04-函数.md",
+      "found_rank": 3,
+      "top_score": 31.1351,
+      "top1": "ai-lab/python_basics/docs/README.md"
+    },
+    {
+      "id": "q002",
+      "question": "首 token 超时的默认值是多少秒？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 76.2413,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q003",
+      "question": "MCP Server 最小实验提供了哪三个工具？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 95.1366,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q004",
+      "question": "为什么 MCP Server 不暴露 read_file 或 run_command？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 169.9947,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q005",
+      "question": "为什么 .ps1 脚本必须带 UTF-8 BOM？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 110.1441,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q006",
+      "question": "改了 PowerShell 执行策略为什么脚本还是被拦？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 2,
+      "top_score": 138.893,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q007",
+      "question": "数据集里共有几个已知陷阱？",
+      "mode": "sparse",
+      "gold_doc": "STATUS.md",
+      "found_rank": 3,
+      "top_score": 21.7825,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q008",
+      "question": "项目一现在有多少条测试通过？",
+      "mode": "sparse",
+      "gold_doc": "STATUS.md",
+      "found_rank": 2,
+      "top_score": 45.7092,
+      "top1": "README.md"
+    },
+    {
+      "id": "q009",
+      "question": "SSE 每条消息为什么必须以空行结尾？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 117.1159,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q010",
+      "question": "项目一的流式解析为什么选择手写而不用现成的 SDK？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 71.7852,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q011",
+      "question": "本地 Python 环境装在哪个目录，版本是多少？",
+      "mode": "sparse",
+      "gold_doc": "STATUS.md",
+      "found_rank": 5,
+      "top_score": 30.7507,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q012",
+      "question": "为什么 pip 装包要加 --only-binary :all: 这个参数？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 256.4222,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q013",
+      "question": "rerank 和向量检索的区别是什么？",
+      "mode": "sparse",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 76.9422,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q014",
+      "question": "这个项目用的 GPU 型号是什么？",
+      "mode": "sparse",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 29.3208,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q015",
+      "question": "项目每个月的云服务器费用是多少？",
+      "mode": "sparse",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 13.9749,
+      "top1": "ai-lab/python_basics/docs/07-模块与虚拟环境.md"
+    },
+    {
+      "id": "q016",
+      "question": "团队的 Slack 频道叫什么名字？",
+      "mode": "sparse",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 18.0672,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q017",
+      "question": "为什么日志要自己写一个立刻 flush 的 handler？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 69.4765,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q018",
+      "question": "评估脚本里的稳定性指标是测什么的？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 40.6987,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q019",
+      "question": "项目一后端日志写在哪个文件里？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 3,
+      "top_score": 38.9244,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q020",
+      "question": "为什么自定义异常比抛 RuntimeError 好？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 74.984,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q021",
+      "question": "Pydantic 在 LLM 应用里的四个真实用途是什么？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 4,
+      "top_score": 74.6076,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q022",
+      "question": "为什么需要 Pydantic 而不是手写校验？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 68.5603,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q023",
+      "question": "FastAPI 的本质是什么？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 70.6584,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q024",
+      "question": "自定义异常要怎么分类型处理？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 62.5562,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q025",
+      "question": "流式响应为什么对 LLM 应用特别重要？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 40.9804,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q026",
+      "question": "测试流式接口最容易犯什么错？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 32.7563,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q027",
+      "question": "为什么项目一的验收测试要起真进程而不是用进程内测试？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 5,
+      "top_score": 69.8108,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q028",
+      "question": "数据集里哪个陷阱和订阅取消日期有关？",
+      "mode": "sparse",
+      "gold_doc": "STATUS.md",
+      "found_rank": 2,
+      "top_score": 28.0355,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q029",
+      "question": "MCP 和普通 function calling 的机制级区别是什么？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 182.6736,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q030",
+      "question": "为什么前端要用 TextDecoder 并带 stream 选项？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 90.9105,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q031",
+      "question": "前端界面是怎么分发的，为什么没有引入打包工具？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 3,
+      "top_score": 30.195,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q032",
+      "question": "服务端保存了对话上下文吗？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 42.3297,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q033",
+      "question": "为什么可选的模型不是通过配置文件管理的？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 45.0509,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q034",
+      "question": "验收时为什么要启动一个真实的服务器进程？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 5,
+      "top_score": 37.7108,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q035",
+      "question": "时间字段的存储方式为什么会影响统计结果？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 19.0126,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q036",
+      "question": "用户来源字段存在什么数据质量问题？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 16.9188,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q037",
+      "question": "为什么不能直接对邮箱列做去重计数？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 20.1746,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q038",
+      "question": "哪些订阅是收不到钱的？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 15.2078,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q039",
+      "question": "退款记录在金额上有什么需要注意的？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 21.1629,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q040",
+      "question": "最近的登录数据能直接用来算趋势吗？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 21.3001,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q041",
+      "question": "如果输出缓冲出问题，会造成什么现象？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 23.1277,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q042",
+      "question": "怎么证明质量指标不是摆设？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 2,
+      "top_score": 39.0673,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q043",
+      "question": "第二层的教程假设读者已经会什么？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 24.639,
+      "top1": "ai-lab/python_basics/README.md"
+    },
+    {
+      "id": "q044",
+      "question": "课程里为什么没有讲依赖注入、生命周期这些内容？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 52.109,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q045",
+      "question": "前端接收到的字符为什么会变成乱码？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 3,
+      "top_score": 25.7205,
+      "top1": "ai-lab/python_basics/js_to_python.md"
+    },
+    {
+      "id": "q046",
+      "question": "调试信息为什么不能随便打印到输出？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 26.9381,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q047",
+      "question": "服务器怎么判断一条消息收完了？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 30.9356,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q048",
+      "question": "客户端代码怎么知道调用出错了？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 35.7176,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q049",
+      "question": "数据集里的时区问题具体有多大的比例？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 4,
+      "top_score": 19.3528,
+      "top1": "README.md"
+    },
+    {
+      "id": "q050",
+      "question": "教程一共分几层，各自目标是什么？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/README.md",
+      "found_rank": 0,
+      "top_score": 24.6445,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q051",
+      "question": "为什么教程要规定章节顺序不能乱？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/python_basics/docs/README.md",
+      "found_rank": 1,
+      "top_score": 33.4765,
+      "top1": "ai-lab/python_basics/docs/README.md"
+    },
+    {
+      "id": "q052",
+      "question": "为什么 MCP 的实验里没有放读取文件或执行命令的工具？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 57.8262,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q053",
+      "question": "用什么工具检查文档里的说法和实际是否一致？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 17.0237,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q054",
+      "question": "数据集里的渠道字段为什么不能直接分组统计？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 4,
+      "top_score": 28.1282,
+      "top1": "README.md"
+    },
+    {
+      "id": "q055",
+      "question": "文档说活跃下跌、数据却说上涨，这种矛盾是怎么发现的？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 38.0484,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q056",
+      "question": "为什么 .ps1 文件必须要加字节顺序标记？",
+      "mode": "sparse",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 2,
+      "top_score": 36.555,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q001",
+      "question": "章节重排后 def 在第几章教？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/docs/04-函数.md",
+      "found_rank": 2,
+      "top_score": 0.0299,
+      "top1": "ai-lab/python_basics/docs/09-异步与并发.md"
+    },
+    {
+      "id": "q002",
+      "question": "首 token 超时的默认值是多少秒？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.0303,
+      "top1": "ai-lab/python_basics/docs/05-条件循环与作用域.md"
+    },
+    {
+      "id": "q003",
+      "question": "MCP Server 最小实验提供了哪三个工具？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.0325,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q004",
+      "question": "为什么 MCP Server 不暴露 read_file 或 run_command？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 2,
+      "top_score": 0.0325,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q005",
+      "question": "为什么 .ps1 脚本必须带 UTF-8 BOM？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.032,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q006",
+      "question": "改了 PowerShell 执行策略为什么脚本还是被拦？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.0323,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q007",
+      "question": "数据集里共有几个已知陷阱？",
+      "mode": "hybrid",
+      "gold_doc": "STATUS.md",
+      "found_rank": 1,
+      "top_score": 0.0302,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q008",
+      "question": "项目一现在有多少条测试通过？",
+      "mode": "hybrid",
+      "gold_doc": "STATUS.md",
+      "found_rank": 0,
+      "top_score": 0.0298,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q009",
+      "question": "SSE 每条消息为什么必须以空行结尾？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.0328,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q010",
+      "question": "项目一的流式解析为什么选择手写而不用现成的 SDK？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 0.0328,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q011",
+      "question": "本地 Python 环境装在哪个目录，版本是多少？",
+      "mode": "hybrid",
+      "gold_doc": "STATUS.md",
+      "found_rank": 0,
+      "top_score": 0.0323,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q012",
+      "question": "为什么 pip 装包要加 --only-binary :all: 这个参数？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.0328,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q013",
+      "question": "rerank 和向量检索的区别是什么？",
+      "mode": "hybrid",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.0328,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q014",
+      "question": "这个项目用的 GPU 型号是什么？",
+      "mode": "hybrid",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.0282,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q015",
+      "question": "项目每个月的云服务器费用是多少？",
+      "mode": "hybrid",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.0268,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q016",
+      "question": "团队的 Slack 频道叫什么名字？",
+      "mode": "hybrid",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.0285,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q017",
+      "question": "为什么日志要自己写一个立刻 flush 的 handler？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 0.0328,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q018",
+      "question": "评估脚本里的稳定性指标是测什么的？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.0293,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q019",
+      "question": "项目一后端日志写在哪个文件里？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 2,
+      "top_score": 0.0313,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q020",
+      "question": "为什么自定义异常比抛 RuntimeError 好？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.0325,
+      "top1": "ai-lab/python_basics/docs/06-异常与文件.md"
+    },
+    {
+      "id": "q021",
+      "question": "Pydantic 在 LLM 应用里的四个真实用途是什么？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 5,
+      "top_score": 0.0328,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q022",
+      "question": "为什么需要 Pydantic 而不是手写校验？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.0325,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q023",
+      "question": "FastAPI 的本质是什么？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.0325,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q024",
+      "question": "自定义异常要怎么分类型处理？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.0325,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q025",
+      "question": "流式响应为什么对 LLM 应用特别重要？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 0,
+      "top_score": 0.0303,
+      "top1": "ai-lab/python_basics/docs/04-函数.md"
+    },
+    {
+      "id": "q026",
+      "question": "测试流式接口最容易犯什么错？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 4,
+      "top_score": 0.0301,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q027",
+      "question": "为什么项目一的验收测试要起真进程而不是用进程内测试？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.0325,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q028",
+      "question": "数据集里哪个陷阱和订阅取消日期有关？",
+      "mode": "hybrid",
+      "gold_doc": "STATUS.md",
+      "found_rank": 1,
+      "top_score": 0.0293,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q029",
+      "question": "MCP 和普通 function calling 的机制级区别是什么？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.0328,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q030",
+      "question": "为什么前端要用 TextDecoder 并带 stream 选项？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 0.0328,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q031",
+      "question": "前端界面是怎么分发的，为什么没有引入打包工具？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.0299,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q032",
+      "question": "服务端保存了对话上下文吗？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.0323,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q033",
+      "question": "为什么可选的模型不是通过配置文件管理的？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 2,
+      "top_score": 0.0267,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q034",
+      "question": "验收时为什么要启动一个真实的服务器进程？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 4,
+      "top_score": 0.0294,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q035",
+      "question": "时间字段的存储方式为什么会影响统计结果？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.0289,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q036",
+      "question": "用户来源字段存在什么数据质量问题？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.0301,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q037",
+      "question": "为什么不能直接对邮箱列做去重计数？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.0315,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q038",
+      "question": "哪些订阅是收不到钱的？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.0291,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q039",
+      "question": "退款记录在金额上有什么需要注意的？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 4,
+      "top_score": 0.0267,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q040",
+      "question": "最近的登录数据能直接用来算趋势吗？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 0.0284,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q041",
+      "question": "如果输出缓冲出问题，会造成什么现象？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.031,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q042",
+      "question": "怎么证明质量指标不是摆设？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 5,
+      "top_score": 0.031,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q043",
+      "question": "第二层的教程假设读者已经会什么？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.0318,
+      "top1": "ai-lab/python_basics/README.md"
+    },
+    {
+      "id": "q044",
+      "question": "课程里为什么没有讲依赖注入、生命周期这些内容？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 2,
+      "top_score": 0.0312,
+      "top1": "ai-lab/python_basics/README.md"
+    },
+    {
+      "id": "q045",
+      "question": "前端接收到的字符为什么会变成乱码？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.0315,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q046",
+      "question": "调试信息为什么不能随便打印到输出？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 3,
+      "top_score": 0.0279,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q047",
+      "question": "服务器怎么判断一条消息收完了？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 0,
+      "top_score": 0.0285,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q048",
+      "question": "客户端代码怎么知道调用出错了？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.0287,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q049",
+      "question": "数据集里的时区问题具体有多大的比例？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 0.026,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q050",
+      "question": "教程一共分几层，各自目标是什么？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/README.md",
+      "found_rank": 0,
+      "top_score": 0.0291,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q051",
+      "question": "为什么教程要规定章节顺序不能乱？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/python_basics/docs/README.md",
+      "found_rank": 4,
+      "top_score": 0.0307,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q052",
+      "question": "为什么 MCP 的实验里没有放读取文件或执行命令的工具？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.0325,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q053",
+      "question": "用什么工具检查文档里的说法和实际是否一致？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 0.0277,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q054",
+      "question": "数据集里的渠道字段为什么不能直接分组统计？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.0278,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q055",
+      "question": "文档说活跃下跌、数据却说上涨，这种矛盾是怎么发现的？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.0309,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q056",
+      "question": "为什么 .ps1 文件必须要加字节顺序标记？",
+      "mode": "hybrid",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 2,
+      "top_score": 0.0323,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q001",
+      "question": "章节重排后 def 在第几章教？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/docs/04-函数.md",
+      "found_rank": 0,
+      "top_score": 0.1874,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q002",
+      "question": "首 token 超时的默认值是多少秒？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 0.4498,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q003",
+      "question": "MCP Server 最小实验提供了哪三个工具？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.5795,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q004",
+      "question": "为什么 MCP Server 不暴露 read_file 或 run_command？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 2,
+      "top_score": 0.7101,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q005",
+      "question": "为什么 .ps1 脚本必须带 UTF-8 BOM？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.7006,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q006",
+      "question": "改了 PowerShell 执行策略为什么脚本还是被拦？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.6997,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q007",
+      "question": "数据集里共有几个已知陷阱？",
+      "mode": "rerank",
+      "gold_doc": "STATUS.md",
+      "found_rank": 2,
+      "top_score": 0.2035,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q008",
+      "question": "项目一现在有多少条测试通过？",
+      "mode": "rerank",
+      "gold_doc": "STATUS.md",
+      "found_rank": 3,
+      "top_score": 0.2868,
+      "top1": "README.md"
+    },
+    {
+      "id": "q009",
+      "question": "SSE 每条消息为什么必须以空行结尾？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.6826,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q010",
+      "question": "项目一的流式解析为什么选择手写而不用现成的 SDK？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 0.3039,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q011",
+      "question": "本地 Python 环境装在哪个目录，版本是多少？",
+      "mode": "rerank",
+      "gold_doc": "STATUS.md",
+      "found_rank": 0,
+      "top_score": 0.1789,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q012",
+      "question": "为什么 pip 装包要加 --only-binary :all: 这个参数？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.9093,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q013",
+      "question": "rerank 和向量检索的区别是什么？",
+      "mode": "rerank",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.5059,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q014",
+      "question": "这个项目用的 GPU 型号是什么？",
+      "mode": "rerank",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.2067,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q015",
+      "question": "项目每个月的云服务器费用是多少？",
+      "mode": "rerank",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.0802,
+      "top1": "ai-lab/python_basics/docs/07-模块与虚拟环境.md"
+    },
+    {
+      "id": "q016",
+      "question": "团队的 Slack 频道叫什么名字？",
+      "mode": "rerank",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.1335,
+      "top1": "ai-lab/python_basics/docs/03-列表字典与推导式.md"
+    },
+    {
+      "id": "q017",
+      "question": "为什么日志要自己写一个立刻 flush 的 handler？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 0.358,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q018",
+      "question": "评估脚本里的稳定性指标是测什么的？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 3,
+      "top_score": 0.2121,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q019",
+      "question": "项目一后端日志写在哪个文件里？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 0.3074,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q020",
+      "question": "为什么自定义异常比抛 RuntimeError 好？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.4713,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q021",
+      "question": "Pydantic 在 LLM 应用里的四个真实用途是什么？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 3,
+      "top_score": 0.4695,
+      "top1": "ai-lab/python_basics/docs/08-类与对象.md"
+    },
+    {
+      "id": "q022",
+      "question": "为什么需要 Pydantic 而不是手写校验？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.5089,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q023",
+      "question": "FastAPI 的本质是什么？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.8926,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q024",
+      "question": "自定义异常要怎么分类型处理？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.5792,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q025",
+      "question": "流式响应为什么对 LLM 应用特别重要？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.3399,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q026",
+      "question": "测试流式接口最容易犯什么错？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.1786,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q027",
+      "question": "为什么项目一的验收测试要起真进程而不是用进程内测试？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 4,
+      "top_score": 0.2763,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q028",
+      "question": "数据集里哪个陷阱和订阅取消日期有关？",
+      "mode": "rerank",
+      "gold_doc": "STATUS.md",
+      "found_rank": 3,
+      "top_score": 0.1986,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q029",
+      "question": "MCP 和普通 function calling 的机制级区别是什么？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.7545,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q030",
+      "question": "为什么前端要用 TextDecoder 并带 stream 选项？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 0.322,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q031",
+      "question": "前端界面是怎么分发的，为什么没有引入打包工具？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 5,
+      "top_score": 0.1407,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q032",
+      "question": "服务端保存了对话上下文吗？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 0.2213,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q033",
+      "question": "为什么可选的模型不是通过配置文件管理的？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 0.2406,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q034",
+      "question": "验收时为什么要启动一个真实的服务器进程？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 0,
+      "top_score": 0.1848,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q035",
+      "question": "时间字段的存储方式为什么会影响统计结果？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 0.1148,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q036",
+      "question": "用户来源字段存在什么数据质量问题？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.0915,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q037",
+      "question": "为什么不能直接对邮箱列做去重计数？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.1242,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q038",
+      "question": "哪些订阅是收不到钱的？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 0,
+      "top_score": 0.1265,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q039",
+      "question": "退款记录在金额上有什么需要注意的？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 0.1576,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q040",
+      "question": "最近的登录数据能直接用来算趋势吗？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.1159,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q041",
+      "question": "如果输出缓冲出问题，会造成什么现象？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 0.1564,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q042",
+      "question": "怎么证明质量指标不是摆设？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 2,
+      "top_score": 0.3878,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q043",
+      "question": "第二层的教程假设读者已经会什么？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.216,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q044",
+      "question": "课程里为什么没有讲依赖注入、生命周期这些内容？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 0.2448,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q045",
+      "question": "前端接收到的字符为什么会变成乱码？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 4,
+      "top_score": 0.1816,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q046",
+      "question": "调试信息为什么不能随便打印到输出？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 2,
+      "top_score": 0.1658,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q047",
+      "question": "服务器怎么判断一条消息收完了？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 2,
+      "top_score": 0.1477,
+      "top1": "ai-lab/python_basics/docs/05-条件循环与作用域.md"
+    },
+    {
+      "id": "q048",
+      "question": "客户端代码怎么知道调用出错了？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.2379,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q049",
+      "question": "数据集里的时区问题具体有多大的比例？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 0.1066,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q050",
+      "question": "教程一共分几层，各自目标是什么？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/README.md",
+      "found_rank": 0,
+      "top_score": 0.1131,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q051",
+      "question": "为什么教程要规定章节顺序不能乱？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/python_basics/docs/README.md",
+      "found_rank": 2,
+      "top_score": 0.1693,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q052",
+      "question": "为什么 MCP 的实验里没有放读取文件或执行命令的工具？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 0.2126,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q053",
+      "question": "用什么工具检查文档里的说法和实际是否一致？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.0994,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q054",
+      "question": "数据集里的渠道字段为什么不能直接分组统计？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 0.1318,
+      "top1": "ai-lab/python_basics/docs/01-变量与类型.md"
+    },
+    {
+      "id": "q055",
+      "question": "文档说活跃下跌、数据却说上涨，这种矛盾是怎么发现的？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 2,
+      "top_score": 0.1499,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q056",
+      "question": "为什么 .ps1 文件必须要加字节顺序标记？",
+      "mode": "rerank",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 0.1739,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q001",
+      "question": "章节重排后 def 在第几章教？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/docs/04-函数.md",
+      "found_rank": 2,
+      "top_score": 9.0,
+      "top1": "ai-lab/python_basics/docs/README.md"
+    },
+    {
+      "id": "q002",
+      "question": "首 token 超时的默认值是多少秒？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q003",
+      "question": "MCP Server 最小实验提供了哪三个工具？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q004",
+      "question": "为什么 MCP Server 不暴露 read_file 或 run_command？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q005",
+      "question": "为什么 .ps1 脚本必须带 UTF-8 BOM？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q006",
+      "question": "改了 PowerShell 执行策略为什么脚本还是被拦？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q007",
+      "question": "数据集里共有几个已知陷阱？",
+      "mode": "llm",
+      "gold_doc": "STATUS.md",
+      "found_rank": 4,
+      "top_score": 10.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q008",
+      "question": "项目一现在有多少条测试通过？",
+      "mode": "llm",
+      "gold_doc": "STATUS.md",
+      "found_rank": 3,
+      "top_score": 10.0,
+      "top1": "README.md"
+    },
+    {
+      "id": "q009",
+      "question": "SSE 每条消息为什么必须以空行结尾？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 9.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q010",
+      "question": "项目一的流式解析为什么选择手写而不用现成的 SDK？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q011",
+      "question": "本地 Python 环境装在哪个目录，版本是多少？",
+      "mode": "llm",
+      "gold_doc": "STATUS.md",
+      "found_rank": 2,
+      "top_score": 10.0,
+      "top1": "README.md"
+    },
+    {
+      "id": "q012",
+      "question": "为什么 pip 装包要加 --only-binary :all: 这个参数？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q013",
+      "question": "rerank 和向量检索的区别是什么？",
+      "mode": "llm",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 8.0,
+      "top1": "前端转LLM应用工程师-学习计划.md"
+    },
+    {
+      "id": "q014",
+      "question": "这个项目用的 GPU 型号是什么？",
+      "mode": "llm",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 1.0,
+      "top1": "ai-lab/docs/windows-quickstart.md"
+    },
+    {
+      "id": "q015",
+      "question": "项目每个月的云服务器费用是多少？",
+      "mode": "llm",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 3.0,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q016",
+      "question": "团队的 Slack 频道叫什么名字？",
+      "mode": "llm",
+      "gold_doc": "",
+      "found_rank": 0,
+      "top_score": 0.0,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q017",
+      "question": "为什么日志要自己写一个立刻 flush 的 handler？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 3,
+      "top_score": 6.0,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q018",
+      "question": "评估脚本里的稳定性指标是测什么的？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q019",
+      "question": "项目一后端日志写在哪个文件里？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q020",
+      "question": "为什么自定义异常比抛 RuntimeError 好？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q021",
+      "question": "Pydantic 在 LLM 应用里的四个真实用途是什么？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q022",
+      "question": "为什么需要 Pydantic 而不是手写校验？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 9.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q023",
+      "question": "FastAPI 的本质是什么？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q024",
+      "question": "自定义异常要怎么分类型处理？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q025",
+      "question": "流式响应为什么对 LLM 应用特别重要？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q026",
+      "question": "测试流式接口最容易犯什么错？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q027",
+      "question": "为什么项目一的验收测试要起真进程而不是用进程内测试？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 3,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q028",
+      "question": "数据集里哪个陷阱和订阅取消日期有关？",
+      "mode": "llm",
+      "gold_doc": "STATUS.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q029",
+      "question": "MCP 和普通 function calling 的机制级区别是什么？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q030",
+      "question": "为什么前端要用 TextDecoder 并带 stream 选项？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q031",
+      "question": "前端界面是怎么分发的，为什么没有引入打包工具？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q032",
+      "question": "服务端保存了对话上下文吗？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q033",
+      "question": "为什么可选的模型不是通过配置文件管理的？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q034",
+      "question": "验收时为什么要启动一个真实的服务器进程？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/docs/ADR.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/docs/ADR.md"
+    },
+    {
+      "id": "q035",
+      "question": "时间字段的存储方式为什么会影响统计结果？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 9.0,
+      "top1": "STATUS.md"
+    },
+    {
+      "id": "q036",
+      "question": "用户来源字段存在什么数据质量问题？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q037",
+      "question": "为什么不能直接对邮箱列做去重计数？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 3,
+      "top_score": 4.0,
+      "top1": "ai-lab/python_basics/docs/03-列表字典与推导式.md"
+    },
+    {
+      "id": "q038",
+      "question": "哪些订阅是收不到钱的？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 9.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q039",
+      "question": "退款记录在金额上有什么需要注意的？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 8.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q040",
+      "question": "最近的登录数据能直接用来算趋势吗？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q041",
+      "question": "如果输出缓冲出问题，会造成什么现象？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 0,
+      "top_score": 7.0,
+      "top1": "ai-lab/python_basics/docs/10-调试与报错.md"
+    },
+    {
+      "id": "q042",
+      "question": "怎么证明质量指标不是摆设？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q043",
+      "question": "第二层的教程假设读者已经会什么？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q044",
+      "question": "课程里为什么没有讲依赖注入、生命周期这些内容？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/backend/README.md",
+      "found_rank": 1,
+      "top_score": 9.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q045",
+      "question": "前端接收到的字符为什么会变成乱码？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/project1-stream-chat/README.md",
+      "found_rank": 1,
+      "top_score": 9.0,
+      "top1": "ai-lab/projects/project1-stream-chat/README.md"
+    },
+    {
+      "id": "q046",
+      "question": "调试信息为什么不能随便打印到输出？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q047",
+      "question": "服务器怎么判断一条消息收完了？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 9.0,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q048",
+      "question": "客户端代码怎么知道调用出错了？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 2,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/backend/README.md"
+    },
+    {
+      "id": "q049",
+      "question": "数据集里的时区问题具体有多大的比例？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q050",
+      "question": "教程一共分几层，各自目标是什么？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/README.md"
+    },
+    {
+      "id": "q051",
+      "question": "为什么教程要规定章节顺序不能乱？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/python_basics/docs/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/python_basics/docs/README.md"
+    },
+    {
+      "id": "q052",
+      "question": "为什么 MCP 的实验里没有放读取文件或执行命令的工具？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/projects/mcp-minimal/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/projects/mcp-minimal/README.md"
+    },
+    {
+      "id": "q053",
+      "question": "用什么工具检查文档里的说法和实际是否一致？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q054",
+      "question": "数据集里的渠道字段为什么不能直接分组统计？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 10.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q055",
+      "question": "文档说活跃下跌、数据却说上涨，这种矛盾是怎么发现的？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/README.md",
+      "found_rank": 1,
+      "top_score": 9.0,
+      "top1": "ai-lab/README.md"
+    },
+    {
+      "id": "q056",
+      "question": "为什么 .ps1 文件必须要加字节顺序标记？",
+      "mode": "llm",
+      "gold_doc": "ai-lab/docs/windows-quickstart.md",
+      "found_rank": 2,
+      "top_score": 10.0,
+      "top1": "README.md"
+    }
+  ]
+}

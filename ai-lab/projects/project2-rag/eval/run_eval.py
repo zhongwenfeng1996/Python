@@ -42,6 +42,7 @@ sys.path.insert(0, str(HERE.parent))
 from rag.chunking import STRATEGIES, chunk_document     # noqa: E402
 from rag.corpus import load_corpus                       # noqa: E402
 from rag.embeddings import get_embedder                  # noqa: E402
+from rag.llm_rerank import LLMRerankConfig, LLMReranker, LLMScorer  # noqa: E402
 from rag.rerank import LexicalReranker, RerankWeights, TwoStageRetriever  # noqa: E402
 from rag.retrieve import Retriever                       # noqa: E402
 from rag.store import Store                              # noqa: E402
@@ -226,6 +227,18 @@ def main() -> int:
                     help="重排权重：邻近度（实测有害，默认 0）")
     ap.add_argument("--w-dense", type=float, default=RerankWeights().dense_prior,
                     help="重排权重：原始稠密分数先验")
+    # ---- LLM 重排（ADR-009）----
+    ap.add_argument("--llm-rerank", action="store_true",
+                    help="用 LLM 做语义重排（需要 DEEPSEEK_API_KEY）。"
+                         "与 --rerank 可同时给，那样会同时评估两种重排")
+    ap.add_argument("--llm-model", default="deepseek-flash")
+    ap.add_argument("--llm-batch", type=int, default=10,
+                    help="一次给模型几个候选打分（实测 5~10 稳定）")
+    ap.add_argument("--llm-concurrency", type=int, default=3)
+    ap.add_argument("--llm-cache", default=str(HERE.parent / "data" / "llm-score-cache.json"),
+                    help="打分缓存文件（**必须缓存**：一次全量评估上千次调用）")
+    ap.add_argument("--llm-max-candidates", type=int, default=50,
+                    help="最多给 LLM 打多少个候选（控制成本）")
     args = ap.parse_args()
 
     qpath = Path(args.questions)
@@ -258,6 +271,8 @@ def main() -> int:
     # 重排器需要全语料的 IDF 统计，所以要把所有块文本传进去预计算。
     reranker = None
     two_stage = None
+    llm_two_stage = None
+    llm_scorer = None
     if args.rerank:
         weights = RerankWeights(
             overlap=args.w_overlap,
@@ -272,6 +287,23 @@ def main() -> int:
             recall_k=args.recall_k,
         )
 
+    # ---- 可选：LLM 语义重排（ADR-009）----
+    if args.llm_rerank:
+        llm_scorer = LLMScorer(LLMRerankConfig(
+            model=args.llm_model,
+            concurrency=args.llm_concurrency,
+            batch_size=args.llm_batch,
+            cache_path=args.llm_cache,
+        ))
+        llm_rr = LLMReranker(llm_scorer)
+        # 用与词法重排**完全相同**的召回配置 —— 这样两种重排的差异
+        # 只来自"打分方式"，而不是召回池不同。对比才有意义。
+        llm_two_stage = TwoStageRetriever(
+            retriever, llm_rr,
+            recall_channels=args.recall_channels,
+            recall_k=args.llm_max_candidates,
+        )
+
     print("=" * 78)
     print("  检索评估 · recall@k / MRR")
     print("=" * 78)
@@ -283,11 +315,16 @@ def main() -> int:
     print(f"  k          : {args.k}")
     print(f"  拒答阈值   : {args.abstain_threshold}")
     if args.rerank:
-        print(f"  重排       : 开  召回={args.recall_channels}@{args.recall_k}  "
+        print(f"  词法重排   : 开  召回={args.recall_channels}@{args.recall_k}  "
               f"权重 overlap={args.w_overlap} heading={args.w_heading} "
               f"proximity={args.w_proximity} dense_prior={args.w_dense}")
     else:
-        print("  重排       : 关（加 --rerank 打开）")
+        print("  词法重排   : 关（加 --rerank 打开）")
+    if args.llm_rerank:
+        print(f"  LLM 重排   : 开  model={args.llm_model} batch={args.llm_batch} "
+              f"候选上限={args.llm_max_candidates} 缓存={args.llm_cache}")
+    else:
+        print("  LLM 重排   : 关（加 --llm-rerank 打开，需 API Key）")
     print()
 
     modes = [m.strip() for m in args.modes.split(",") if m.strip()]
@@ -297,13 +334,23 @@ def main() -> int:
             if two_stage is None:
                 print("  ⚠️ --modes 里有 rerank 但没加 --rerank，跳过")
                 continue
-            # 用两段式检索器替换掉单通道检索器
             r = evaluate(two_stage, questions, "rerank", args.strategy,
+                         k=args.k, abstain_threshold=args.abstain_threshold)
+        elif mode == "llm":
+            if llm_two_stage is None:
+                print("  ⚠️ --modes 里有 llm 但没加 --llm-rerank，跳过")
+                continue
+            r = evaluate(llm_two_stage, questions, "llm", args.strategy,
                          k=args.k, abstain_threshold=args.abstain_threshold)
         else:
             r = evaluate(retriever, questions, mode, args.strategy,
                          k=args.k, abstain_threshold=args.abstain_threshold)
         results.append(r)
+
+        # LLM 评估很贵 —— 每跑完一个通道就存一次缓存，
+        # 避免中途出错导致上千次调用白花
+        if llm_scorer is not None:
+            llm_scorer.save_cache()
 
     # ---- 对比表（这是项目的核心产出）----
     print("─" * 78)
