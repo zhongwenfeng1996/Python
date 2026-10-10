@@ -194,6 +194,13 @@ def main() -> int:
     # 端到端：可答题里"给了带引用的回答"的比例
     e2e = (sum(1 for r in ans_rec if r["gave_cite"]) / len(ans_rec)) if ans_rec else 0.0
 
+    # ---- 机械校验救回来的幻觉（ADR-012）----
+    # 模型本来答了，但引用的文档不属于问题问的对象 → 被强制弃答。
+    # 这类必须**单独计量**：它体现的是机械校验的价值，
+    # 不是模型的拒答能力（模型自己没拦住）。
+    n_scope_saved = sum(1 for r in ans_rec if r.get("abstained_by_scope"))
+    scope_violated_ids = [r["id"] for r in ans_rec if r.get("abstained_by_scope")]
+
     print()
     print("─" * 90)
     print("  指标")
@@ -213,6 +220,12 @@ def main() -> int:
     print(f"    含答案的块进了资料              : {chunk_ctx_rate:.4f}  "
           f"← **生成的真实上限**")
     print(f"  ★ 端到端（可答题给出带引用回答）  : {e2e:.4f}")
+    print()
+    print(f"  ★ 作用域机械校验（ADR-012）")
+    print(f"    被拦下的跨文档混淆（模型答了但引用错文档）: {n_scope_saved} 条"
+          + (f"  {scope_violated_ids}" if scope_violated_ids else ""))
+    print(f"    → 这些是**机械校验救回来的幻觉**，不是模型自己拒的答。")
+    print(f"      模型宁愿编也不愿说不知道，所以不能只靠提示词。")
     # 生成层的**净能力**：答案块在资料里时，模型答出来的比例。
     # 这才是衡量生成层的指标 —— 把检索的锅摘出去。
     if ans_rec:

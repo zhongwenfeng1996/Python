@@ -52,6 +52,7 @@ from typing import Sequence
 
 from .llm_rerank import LLMScorer, _load_dotenv  # noqa: F401  (顺带触发 .env 加载)
 from .retrieve import Hit
+from .scope_check import ScopeCheck, check_scope, violated_citations
 
 # ======================================================================
 # 提示词
@@ -162,6 +163,13 @@ class Answer:
     cited: list[int] = field(default_factory=list)
     #: 非法引用：编号超出资料范围，或引用了不存在的段
     invalid_citations: list[int] = field(default_factory=list)
+    #: 作用域校验结果（ADR-012）：引用的文档是否属于问题所问的对象。
+    #: 这是**机械**校验，用来堵住"拿项目二的答案答项目一"这类幻觉。
+    scope: ScopeCheck | None = None
+    #: 因为作用域违规而被强制弃答（保存原始回答以便诊断）
+    abstained_by_scope: bool = False
+    #: 被强制弃答前的原始回答（仅供诊断，不对外）
+    raw_text: str = ""
     #: 检索最高分（弃答判据）
     top_score: float = 0.0
     usage: dict = field(default_factory=dict)
@@ -333,14 +341,39 @@ class Generator:
         invalid = [c for c in cited if not (1 <= c <= len(picked))]
         valid_cited = [c for c in cited if 1 <= c <= len(picked)]
 
+        # ---- 作用域机械校验（ADR-012）----
+        #
+        # 为什么必须在这里做：提示词只能"降低"跨文档混淆的概率。
+        # 实测（ADR-011）加了规则后那条题**仍然 75% 失败** ——
+        # 因为"引用的文档属不属于问题问的对象"这件事，
+        # 模型要自己推理，而它经常不推理。
+        #
+        # 但这个属性**可以预先编译成表**（见 scope_check.ENTITIES），
+        # 于是变成一次纯字符串比对，100% 可靠。
+        #
+        # 触发后的行为：**强制弃答**，并保留原始回答供诊断。
+        # 宁可说"不知道"，也不能给一个引用了错文档的答案 ——
+        # 后者看起来完全合理，用户无从分辨。
+        scope = check_scope(question, picked)
+        forced = False
+        final_text = text
+        final_cited = valid_cited
+        if not scope.ok and valid_cited:
+            forced = True
+            final_text = ABSTAIN_PHRASE
+            final_cited = []
+
         return Answer(
             question=question,
-            text=text,
+            text=final_text,
             # 判据依赖"有引用"这个事实，所以要把合法引用先算出来再判
-            abstained=looks_like_abstain(text, valid_cited),
+            abstained=forced or looks_like_abstain(text, valid_cited),
             passages=picked,
-            cited=valid_cited,
+            cited=final_cited,
             invalid_citations=invalid,
+            scope=scope,
+            abstained_by_scope=forced,
+            raw_text=text if forced else "",
             top_score=top_score,
             usage=usage,
             model=self.cfg.model,
