@@ -57,8 +57,16 @@ from rag.retrieve import Retriever                             # noqa: E402
 from rag.store import Store                                    # noqa: E402
 
 # 对抗性问题集：(类别, 问题, 为什么应该弃答)
+#
+# ⚠️ 规模说明：评估集里原本只有 **4 条**不可答题，样本太少、
+#    算不出可信的弃答准确率（4 条里错 1 条就是 25% 的波动）。
+#    所以这里扩到 16 条，覆盖 6 类"无从答起"的形态。
+#
+# ⚠️ 诚实声明：这些题是**为了测试而构造**的，不是独立写下的评估集。
+#    它们的作用是暴露失败模式、驱动改进，**不能当作无偏的准确率估计**
+#    （真实的不可答问题分布我并不知道）。
 ADVERSARIAL: list[tuple[str, str, str]] = [
-    # 1. 完全离题 —— 与仓库毫无关系
+    # ── 1. 完全离题：与仓库毫无关系
     ("离题", "Transformer 自注意力的时间和空间复杂度分别是多少？",
      "通用 ML 知识，语料里没有"),
     ("离题", "Python 的 GIL 在 3.13 里被移除了吗？",
@@ -87,7 +95,32 @@ ADVERSARIAL: list[tuple[str, str, str]] = [
      "project2 自己的文档被语料排除了"),
     ("相关但排除", "这个 RAG 项目的评估集有几条不可答题？",
      "同上 —— 答案在 project2-rag/eval 里，但那被排除了"),
+    ("相关但排除", "项目二用了哪些第三方 Python 库，版本是多少？",
+     "requirements.txt 不在语料里（语料只有 24 篇 md）"),
+    # 6. 跨项目 / 用户私有信息（真实场景里最常被问到的一类）
+    ("跨项目", "项目一的测试用例文件叫什么名字？",
+     "语料只讲测试数量与验收点，不讲文件名"),
+    ("私有信息", "这个仓库的 GitHub star 数是多少？",
+     "动态数据，语料里不可能有"),
+    ("私有信息", "作者用的是哪一款显示器？",
+     "开发环境之外的私人信息，语料没有"),
 ]
+
+# ⚠️ 一条被我**移出**对抗集的题（记录教训）
+#
+# 原本这里有一条：
+#     ("私有信息", "作者下一步打算做什么功能？", "计划类信息…")
+#
+# **它是错的**：`ADR.md` 原文就有
+#     "**下一步**：项目二会引入 AI SDK 对照实现一遍，并在文档里写清
+#      '框架替我做了什么'。"
+# 所以模型答出来了是**正确行为**，而我把它标成"应弃答"。
+#
+# 这违反了本仓库自己定的规则（ADR-005/008 反复强调过）：
+# **编评估题之前必须先查文档，不能凭印象。**
+# 这是我第二次犯（第一次是 ADR-008 里那 4 条用了被排除的文档当 gold_doc）。
+#
+# 换成了一条真正查过、确实没有的题：「作者用的是哪一款显示器？」
 
 
 def main() -> int:
@@ -105,7 +138,7 @@ def main() -> int:
         cache_path=str(HERE.parent / "data" / "llm-score-cache.json"),
         batch_size=10, max_chars=400))
     ts = TwoStageRetriever(retriever, LLMReranker(scorer),
-                           recall_channels="union", recall_k=15)
+                           recall_channels="union", recall_k=50)
     gen = Generator(GenerateConfig(abstain_threshold=3.0, max_passages=5))
 
     print("=" * 96)
