@@ -48,7 +48,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Sequence
+from typing import AsyncIterator, Sequence
 
 from .llm_rerank import LLMScorer, _load_dotenv  # noqa: F401  (顺带触发 .env 加载)
 from .retrieve import Hit
@@ -151,6 +151,25 @@ class GenerateConfig:
 
 
 @dataclass
+class Prepared:
+    """
+    `Generator.prepare()` 的产物：生成前该定的都定好了。
+
+    分成这个中间层的好处是**同步/异步边界清晰**：
+    prepare 是同步的（毫秒级），astream 是异步的（秒级）。
+    Web 应用可以"同步地把出处推给前端"，再"异步地流式推正文"。
+    """
+
+    question: str
+    passages: list[Hit]
+    top_score: float
+    #: 分数低于阈值 → 直接弃答，不调模型（省一次 API 调用）
+    abstain_immediately: bool
+    #: 拼好的资料文本（abstain_immediately 时为空）
+    passages_text: str
+
+
+@dataclass
 class Answer:
     """一次生成的完整结果（带上可机械校验的元信息）。"""
 
@@ -246,6 +265,16 @@ class Generator:
     与 LLMScorer 共用 .env 加载与缓存约定，但**生成不缓存** ——
     因为生成的输出很长，而且我们希望对同一问题重跑能看到稳定性
     （缓存会让"稳定性"这个指标永远等于 100%，失去意义）。
+
+    ## 两个入口
+
+      · `generate()`          — 一次性拿到完整回答（评估脚本用）
+      · `prepare()` + `astream()` + `finish()` — 流式（Web 应用用）
+
+    两条路径的**机械校验规则完全相同**（`finish` 复用
+    `looks_like_abstain` 与 `check_scope`）。这一点是刻意保证的：
+    诊断口径与生产流程不一致，我在这个项目上犯过两次
+    （ADR-008 / ADR-010），代价是几轮无用功。
     """
 
     def __init__(self, cfg: GenerateConfig | None = None) -> None:
@@ -378,4 +407,139 @@ class Generator:
             usage=usage,
             model=self.cfg.model,
             elapsed_s=round(time.time() - t0, 2),
+        )
+
+    # ==================================================================
+    # 流式生成（给 Web 应用用）
+    # ==================================================================
+
+    def prepare(self, question: str, hits: Sequence[Hit]) -> "Prepared":
+        """
+        把"生成之前该做的判断"一次做完，返回可直接送模型的状态。
+
+        ## 为什么拆成 prepare + astream + finish
+
+        Web 应用需要**流式**返回 —— 先让用户看到字动起来，
+        而不是等 3 秒拿一整段。但生成之前有几件必须先做完的事：
+        决定送哪几段、判弃答阈值、拼资料文本。这些是毫秒级的同步操作。
+
+        拆开之后调用方就能：
+            先 prepare（同步）→ 立刻推一个 "sources" 事件（让用户马上看到出处）
+            → 再 astream（异步）逐字推 delta
+
+        这正是"首字延迟低"和"可溯源"能同时做到的原因。
+        """
+        picked = self._pick(hits)
+        top_score = max((h.score for h in picked), default=0.0)
+        need_abstain = (self.cfg.abstain_threshold > 0
+                        and top_score < self.cfg.abstain_threshold)
+        return Prepared(
+            question=question,
+            passages=picked,
+            top_score=top_score,
+            abstain_immediately=need_abstain,
+            passages_text="" if need_abstain else self.build_passages(
+                picked, self.cfg.max_chars),
+        )
+
+    async def astream(self, prepared: "Prepared") -> AsyncIterator[tuple[str, str]]:
+        """
+        流式生成。逐个 yield `(kind, text)`：
+
+          · `("delta", "增量文本")`
+          · `("final", "完整文本")` —— 结束时给一次
+
+        ⚠️ 为什么最后要再给一次**完整文本**（而不是让调用方自己拼 delta）：
+        调用方需要拿完整回答去做引用解析与作用域校验。
+        自己拼 delta 看起来也行，但容易和模型的实际输出不一致 ——
+        尤其是多字节字符被切在数据包边界时（这正是项目一
+        ADR 里 TextDecoder 那个坑的同类问题）。
+        """
+        import httpx
+
+        if prepared.abstain_immediately:
+            # 分数低于阈值：直接弃答，**省一次 API 调用**
+            yield "delta", ABSTAIN_PHRASE
+            yield "final", ABSTAIN_PHRASE
+            return
+
+        body = {
+            "model": self.cfg.model,
+            "messages": [
+                {"role": "system",
+                 "content": SYSTEM_PROMPT.format(n=len(prepared.passages))},
+                {"role": "user",
+                 "content": USER_TEMPLATE.format(
+                     passages=prepared.passages_text,
+                     question=prepared.question)},
+            ],
+            "temperature": self.cfg.temperature,
+            "max_tokens": self.cfg.max_tokens,
+            "stream": True,
+        }
+
+        acc: list[str] = []
+        async with httpx.AsyncClient(timeout=self.cfg.timeout) as client:
+            async with client.stream(
+                    "POST",
+                    f"{self.cfg.base_url.rstrip('/')}/chat/completions",
+                    json=body,
+                    headers={"Authorization": f"Bearer {self.cfg.api_key}"},
+            ) as r:
+                r.raise_for_status()
+                async for line in r.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    payload = line[5:].strip()
+                    if payload == "[DONE]":
+                        break
+                    try:
+                        obj = json.loads(payload)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = obj.get("choices") or []
+                    if not choices:
+                        continue
+                    piece = (choices[0].get("delta") or {}).get("content") or ""
+                    if piece:
+                        acc.append(piece)
+                        yield "delta", piece
+
+        self.calls += 1
+        yield "final", "".join(acc)
+
+    def finish(self, prepared: "Prepared", text: str) -> Answer:
+        """
+        流式结束后补上机械校验 —— 规则与**非流式路径完全相同**。
+
+        刻意复用 `looks_like_abstain` 与 `check_scope`，不另写一套。
+        理由：诊断口径与生产不一致这件事，我在这个项目上犯过两次
+        （ADR-008 的 union 位置名次、ADR-010 的先截断再打分），
+        两次都浪费了几轮排查。**同一逻辑只有一份实现**是最省心的防线。
+        """
+        cited = parse_citations(text)
+        invalid = [c for c in cited if not (1 <= c <= len(prepared.passages))]
+        valid_cited = [c for c in cited if 1 <= c <= len(prepared.passages)]
+
+        scope = check_scope(prepared.question, prepared.passages)
+        forced = False
+        final_text = text
+        final_cited = valid_cited
+        if not scope.ok and valid_cited:
+            forced = True
+            final_text = ABSTAIN_PHRASE
+            final_cited = []
+
+        return Answer(
+            question=prepared.question,
+            text=final_text,
+            abstained=forced or looks_like_abstain(text, valid_cited),
+            passages=prepared.passages,
+            cited=final_cited,
+            invalid_citations=invalid,
+            scope=scope,
+            abstained_by_scope=forced,
+            raw_text=text if forced else "",
+            top_score=prepared.top_score,
+            model=self.cfg.model,
         )

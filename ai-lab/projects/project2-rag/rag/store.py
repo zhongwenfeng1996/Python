@@ -32,6 +32,7 @@ import array
 import json
 import math
 import sqlite3
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -107,25 +108,53 @@ class Store:
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.con = sqlite3.connect(str(self.db_path))
+
+        # ================================================================
+        # check_same_thread=False + 一把锁 —— 为了能在 Web 服务里跨线程用
+        # ================================================================
+        #
+        # 【踩过的坑】sqlite3 默认**禁止**连接跨线程使用：
+        #     SQLite objects created in a thread can only be used in
+        #     that same thread.
+        #
+        # 评估脚本全程单线程，所以从没碰到。但 Web 服务会：
+        #   · 连接在**主线程**（启动时）创建
+        #   · 检索段在**线程池**里跑（为了不阻塞事件循环）
+        # 于是第一次请求就抛 ProgrammingError。
+        #
+        # 更麻烦的是**症状**：`/api/ask` 是异步生成器，
+        # 第一段检索就抛异常 → StreamingResponse **连响应头都没发出去** →
+        # 客户端一直等到超时（180s），看起来像"服务卡死"，
+        # 而真实原因是一句话的线程限制。
+        #
+        # 修法：关掉线程检查，配一把可重入锁把访问串行化。
+        # 注意 `check_same_thread=False` 本身**不保证**并发安全 ——
+        # 它只是解除限制，安全要靠调用方（也就是这里的锁）。
+        # 本项目读多写少、查询都是毫秒级，一把全局锁完全够。
+        self._lock = threading.RLock()
+        self.con = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.con.row_factory = sqlite3.Row
         # WAL 让读写不互相阻塞；大批量写入也更快
-        self.con.execute("PRAGMA journal_mode=WAL")
-        self.con.executescript(SCHEMA)
-        self.con.commit()
+        with self._lock:
+            self.con.execute("PRAGMA journal_mode=WAL")
+            self.con.executescript(SCHEMA)
+            self.con.commit()
 
     # ---------------- 元数据 ----------------
 
     def get_meta(self, key: str) -> str | None:
-        row = self.con.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        with self._lock:
+            row = self.con.execute(
+                "SELECT value FROM meta WHERE key=?", (key,)).fetchone()
         return row["value"] if row else None
 
     def set_meta(self, key: str, value: str) -> None:
-        self.con.execute(
-            "INSERT INTO meta(key,value) VALUES(?,?) "
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (key, value),
-        )
+        with self._lock:
+            self.con.execute(
+                "INSERT INTO meta(key,value) VALUES(?,?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
 
     @property
     def signature(self) -> str:
@@ -134,16 +163,19 @@ class Store:
 
     @property
     def count(self) -> int:
-        return self.con.execute("SELECT count(*) c FROM chunks").fetchone()["c"]
+        with self._lock:
+            return self.con.execute(
+                "SELECT count(*) c FROM chunks").fetchone()["c"]
 
     # ---------------- 写入 ----------------
 
     def reset(self) -> None:
         """清空所有数据（重建索引前调用）。"""
-        self.con.executescript(
-            "DELETE FROM chunks; DELETE FROM postings; DELETE FROM meta;"
-        )
-        self.con.commit()
+        with self._lock:
+            self.con.executescript(
+                "DELETE FROM chunks; DELETE FROM postings; DELETE FROM meta;"
+            )
+            self.con.commit()
 
     def build(
         self,
@@ -171,24 +203,27 @@ class Store:
                 dim = len(vecs[0])
 
             for c, v in zip(batch, vecs):
-                cur = self.con.execute(
-                    "INSERT INTO chunks(source_path,heading_path,chunk_index,"
-                    "strategy,text,char_len,dim,vec) VALUES(?,?,?,?,?,?,?,?)",
-                    (c.source_path, c.heading_path, c.chunk_index, c.strategy,
-                     c.text, len(c.text), dim, pack_vector(v)),
-                )
-                cid = cur.lastrowid
-                # 倒排：用与 embedding 同一套 n-gram，保证两路"看到的词"一致
-                counts: dict[str, int] = {}
-                for g in _ngrams(c.text):
-                    counts[g] = counts.get(g, 0) + 1
-                self.con.executemany(
-                    "INSERT OR REPLACE INTO postings(term,chunk_id,tf) VALUES(?,?,?)",
-                    [(g, cid, tf) for g, tf in counts.items()],
-                )
+                with self._lock:
+                    cur = self.con.execute(
+                        "INSERT INTO chunks(source_path,heading_path,chunk_index,"
+                        "strategy,text,char_len,dim,vec) VALUES(?,?,?,?,?,?,?,?)",
+                        (c.source_path, c.heading_path, c.chunk_index, c.strategy,
+                         c.text, len(c.text), dim, pack_vector(v)),
+                        )
+                    cid = cur.lastrowid
+                    # 倒排：用与 embedding 同一套 n-gram，保证两路"看到的词"一致
+                    counts: dict[str, int] = {}
+                    for g in _ngrams(c.text):
+                        counts[g] = counts.get(g, 0) + 1
+                    self.con.executemany(
+                        "INSERT OR REPLACE INTO postings(term,chunk_id,tf) "
+                        "VALUES(?,?,?)",
+                        [(g, cid, tf) for g, tf in counts.items()],
+                    )
                 written += 1
 
-            self.con.commit()
+            with self._lock:
+                self.con.commit()
             if progress:
                 print(f"    已写入 {written}/{len(chunks)}", end="\r")
 
@@ -199,15 +234,17 @@ class Store:
         self.set_meta("dim", str(dim))
         self.set_meta("chunks", str(written))
         self.set_meta("strategy", chunks[0].strategy if chunks else "")
-        self.con.commit()
+        with self._lock:
+            self.con.commit()
 
     # ---------------- 读取 ----------------
 
     def all_chunks(self) -> list[StoredChunk]:
-        rows = self.con.execute(
-            "SELECT id,source_path,heading_path,chunk_index,strategy,text,char_len "
-            "FROM chunks ORDER BY id"
-        ).fetchall()
+        with self._lock:
+            rows = self.con.execute(
+                "SELECT id,source_path,heading_path,chunk_index,strategy,text,char_len "
+                "FROM chunks ORDER BY id"
+            ).fetchall()
         return [StoredChunk(**dict(r)) for r in rows]
 
     def load_matrix(self) -> tuple[list[StoredChunk], list[array.array], int]:
@@ -218,10 +255,11 @@ class Store:
         而且能让"暴力 vs 索引"的对比变得具体（ADR-003 的 P1 → P2）。
         """
         dim = int(self.get_meta("dim") or 0)
-        rows = self.con.execute(
-            "SELECT id,source_path,heading_path,chunk_index,strategy,text,char_len,"
-            "vec,dim FROM chunks ORDER BY id"
-        ).fetchall()
+        with self._lock:
+            rows = self.con.execute(
+                "SELECT id,source_path,heading_path,chunk_index,strategy,text,char_len,"
+                "vec,dim FROM chunks ORDER BY id"
+            ).fetchall()
         metas: list[StoredChunk] = []
         vecs: list[array.array] = []
         for r in rows:
@@ -251,9 +289,11 @@ class Store:
         for i in range(0, len(terms), batch):
             part = terms[i:i + batch]
             ph = ",".join("?" * len(part))
-            for row in self.con.execute(
-                f"SELECT chunk_id, tf FROM postings WHERE term IN ({ph})", part
-            ):
+            with self._lock:
+                rows = self.con.execute(
+                    f"SELECT chunk_id, tf FROM postings WHERE term IN ({ph})", part
+                ).fetchall()
+            for row in rows:
                 cid = row["chunk_id"]
                 out[cid] = out.get(cid, 0.0) + row["tf"]
         return out
@@ -274,9 +314,12 @@ class Store:
         for i in range(0, len(terms), batch):
             part = terms[i:i + batch]
             ph = ",".join("?" * len(part))
-            for row in self.con.execute(
-                f"SELECT term, chunk_id, tf FROM postings WHERE term IN ({ph})", part
-            ):
+            with self._lock:
+                rows = self.con.execute(
+                    f"SELECT term, chunk_id, tf FROM postings WHERE term IN ({ph})",
+                    part
+                ).fetchall()
+            for row in rows:
                 out.setdefault(row["term"], {})[row["chunk_id"]] = row["tf"]
         return out
 
@@ -287,15 +330,18 @@ class Store:
         for i in range(0, len(terms), batch):
             part = terms[i:i + batch]
             ph = ",".join("?" * len(part))
-            for row in self.con.execute(
-                f"SELECT term, count(*) c FROM postings WHERE term IN ({ph}) "
-                "GROUP BY term", part
-            ):
+            with self._lock:
+                rows = self.con.execute(
+                    f"SELECT term, count(*) c FROM postings WHERE term IN ({ph}) "
+                    "GROUP BY term", part
+                ).fetchall()
+            for row in rows:
                 out[row["term"]] = row["c"]
         return out
 
     def close(self) -> None:
-        self.con.close()
+        with self._lock:
+            self.con.close()
 
     # 支持 with 语句
     def __enter__(self) -> "Store":

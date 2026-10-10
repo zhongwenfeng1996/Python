@@ -4,8 +4,8 @@
 以及每周的进度与复盘。**所有产出公开，进度可验证。**
 
 > **公开仓库**：<https://github.com/zhongwenfeng1996/Python>
-> **当前状态：W1–W3 · 项目一已可运行（28 条测试通过）+ 教程两层齐全**
-> 教材、数据底座、开发环境都已就绪；项目一后端完成，前端待浏览器验证。
+> **当前状态：项目一可运行（28 条测试通过）· 项目二 RAG 全链路完成（10 条 ADR + 量化指标）· 教程两层齐全**
+> 另有一个把两者接起来的**演示应用**（`project3-rag-chat`），端到端 19 项验收通过。
 
 ---
 
@@ -15,7 +15,9 @@
 |---|---|
 | **看懂整体规划**（8 周全职 / 12 周在职） | [前端转LLM应用工程师-学习计划.md](<前端转LLM应用工程师-学习计划.md>) |
 | **一条命令配好环境** | `Set-Location G:\转型; .\setup.ps1` |
-| **跑起来看项目一** | `cd ai-lab\projects\project1-stream-chat; .\run.ps1` |
+| **跑起来看项目一**（流式对话） | `cd ai-lab\projects\project1-stream-chat; .\run.ps1` |
+| **看 RAG 全链路的量化结果** | [项目二 README](ai-lab/projects/project2-rag/README.md) |
+| **打开一个能用的 RAG 问答页** | `cd ai-lab\projects\project3-rag-chat; & $py backend\main.py` |
 | **配环境出问题了**（Windows 专用，含本机实测的四个坑） | [ai-lab/docs/windows-quickstart.md](ai-lab/docs/windows-quickstart.md) |
 | **看当前进度与下一步** | [STATUS.md](STATUS.md) |
 | **写代码 / 做练习** | [ai-lab/](ai-lab/README.md) |
@@ -81,6 +83,15 @@
     │       ├── mcp_server.py          #   纯标准库 JSON-RPC over stdio
     │       ├── mcp_client.py          #   自写客户端 + 协议演示
     │       └── tests/                 #   24 条协议测试（含 8 个注入载荷）
+    ├── projects/project2-rag/         # 🎯 RAG 全链路（已完成，10 条 ADR）
+    │   ├── rag/                       #   切块 / 双路召回 / 词法与 LLM 重排 / 生成
+    │   ├── eval/                      #   56 条评估集 + 门禁 + 一堆诊断脚本
+    │   ├── docs/ADR.md                #   10 条架构决策（含被实测推翻的判断）
+    │   └── README.md                  #   量化指标 + 13 条反直觉发现
+    ├── projects/project3-rag-chat/    # 🎯 演示应用（加餐，非计划里的项目三）
+    │   ├── backend/main.py            #   FastAPI SSE 流式问答（复用项目二）
+    │   ├── frontend/index.html        #   Vue 3（CDN），引用可点、出处并排
+    │   └── tools/verify_e2e.py        #   19 项端到端验收（真进程 + 真 HTTP）
     ├── data/
     │   ├── schema.sql                 # Postgres 建表 + 六个数据陷阱说明
     │   └── out/                       # 生成的数据（git 忽略，可重建）
@@ -97,10 +108,31 @@
 
 | # | 项目 | 核心考点 | 完成周 | 状态 |
 |---|---|---|---|---|
-| 1 | [流式多模型对话](ai-lab/projects/project1-stream-chat/README.md) | 流式、中断、降级、成本可视化 | W3 | ✅ 后端+测试完成，前端待浏览器验证 |
+| 1 | [流式多模型对话](ai-lab/projects/project1-stream-chat/README.md) | 流式、中断、降级、成本可视化 | W3 | ✅ 后端+测试完成 |
 | — | [MCP Server 最小实验](ai-lab/projects/mcp-minimal/README.md) | 协议、工具调用、工具安全 | 加餐 | ✅ 24 条协议测试通过 |
-| 2 | 企业知识库问答 | 切片、混合检索、rerank、评估、引用 | W7 | ⬜ |
+| 2 | [企业知识库问答](ai-lab/projects/project2-rag/README.md) | 切片、混合检索、rerank、评估、引用 | W7 | ✅ **全链路完成**（10 条 ADR + 量化指标 + 拒答） |
+| — | [RAG 完整链路演示](ai-lab/projects/project3-rag-chat/README.md) | 把 1 和 2 接成一个**能演示的应用** | 加餐 | ✅ 端到端 19 项验收通过 |
 | 3 | 对话式数据分析 Agent | schema 检索、语义层、EX 评估、图表、SQL 安全 | W12 | ⬜ |
+
+> ⚠️ **命名说明（避免误解）**：计划里的「项目三」是 *对话式数据分析
+> Agent*（Text-to-SQL + 语义层 + SQL 安全），**尚未开始**。
+> 仓库里的 `project3-rag-chat/` 是**加餐性质的合并演示应用** ——
+> 它把项目一的界面与项目二的检索链路接起来，便于**现场演示**，
+> 不是计划里的项目三。两个名字容易混，所以在这里写清楚。
+
+### 项目二 · RAG 全链路：关键指标
+
+全部来自独立评估，且**每个指标都有 ADR 说明为什么这么做**：
+
+| 环节 | 指标 | 值 |
+|---|---|---|
+| 检索（稀疏） | recall@5 | 0.9038 |
+| 检索（LLM 重排） | recall@5 / hit@1 | **0.9808 / 0.7885** |
+| 上下文 | 含答案的块进前 5 | **0.9423** |
+| 生成 | 引用合法率（零编造编号） | **1.0000** |
+| 生成 | 端到端 | **0.8974 ± 0.019**（3 次实测） |
+| 拒答 | 对抗集（16 条全应弃答） | **16/16** |
+| 校验 | 跨文档混淆 | **机械拦截，0 泄漏** |
 
 ---
 

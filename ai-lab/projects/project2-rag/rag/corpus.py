@@ -56,6 +56,14 @@ def _is_excluded(p: Path) -> bool:
 #    规律：**任何构建/缓存产物目录都要排除**，不能只排除 .venv。
 EXCLUDE_PARTS: tuple[str, ...] = (
     "project2-rag",
+    # ⚠️ 项目三也必须排除 —— 踩过的坑：
+    #    project3-rag-chat/README.md 里写了**项目二的全部指标**，
+    #    包括"哪些题该弃答""正确答案是什么"。
+    #    它一进语料，语料就从 24 篇变成 25 篇、490 块变成 503 块，
+    #    等于**把答案和评估结论塞进知识库** —— 评估会虚高。
+    #    规律：**任何讨论本项目评估的文档都不能进语料**，
+    #    不只是 project2-rag 自己的目录。
+    "project3-rag-chat",
     "node_modules",
     ".venv",
     ".git",
@@ -153,8 +161,29 @@ def main() -> int:
         print(f"    {d.char_len:>7,} 字符  {d.rel_path}")
     print()
     # 自我排除的验证 —— 这个必须成立，否则评估会虚高
-    leaked = [d for d in docs if "project2-rag" in d.rel_path]
-    print(f"  自我排除检查：{'✅ 没有 project2-rag 的文档混进来' if not leaked else f'❌ 混入了 {len(leaked)} 篇'}")
+    #
+    # ⚠️ 判据必须写准，这里踩过一次：
+    #    最初的规则是「路径里含 projectN-」，结果把
+    #    `project1-stream-chat/` 也拦下了 —— 而**那是评估集的 gold_doc**，
+    #    是合法语料（评估题大量引用它）。误报会让整个评估没法跑。
+    #
+    #    正确的判据：只排除**讨论本项目评估/知识库自身**的文档。
+    #    具体就是这两个目录，它们写着指标、ADR 结论、
+    #    "哪些题该弃答" —— 进了知识库等于把答案塞进去。
+    #
+    #    新增姊妹项目时，**要显式加进这个列表**，不能靠模式猜
+    #    （猜宽了误伤 gold_doc，猜窄了漏掉污染）。
+    self_dirs = ("project2-rag/", "project3-rag-chat/")
+    leaked = [d for d in docs
+              if any(s in d.rel_path for s in self_dirs)]
+    if leaked:
+        print("  自我排除检查：❌ 混入了讨论本项目评估的文档：")
+        for d in leaked:
+            print(f"      {d.rel_path}")
+        print("      → 这会让评估虚高（知识库里有了答案与结论）。")
+        print("      → 修法：把该目录加进 EXCLUDE_PARTS 与这里的 self_dirs。")
+    else:
+        print("  自我排除检查：✅ 没有讨论本项目评估的文档混进来")
     print("=" * 74)
     return 1 if leaked else 0
 

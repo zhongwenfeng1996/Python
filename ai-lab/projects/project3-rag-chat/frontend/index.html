@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG 知识库问答 · 完整链路演示</title>
+<!--
+  Vue 3 走 CDN，不引入构建链 —— 与项目一同样的取舍（ADR-001）：
+  这个演示的重点是**后端链路**，不是前端工程化。
+  省掉 node 工具链换来的代价是没有单文件组件与类型检查。
+-->
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<style>
+  :root {
+    --bg: #0f1115;  --panel: #171a21;  --panel2: #1e222b;
+    --line: #2a2f3a; --fg: #e6e8ee;  --dim: #8a93a6;
+    --accent: #5b9dff; --ok: #3ddc97;  --warn: #ffb454;  --bad: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.65 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 20px; margin: 0 0 6px; font-weight: 650; letter-spacing: .3px; }
+  .sub { color: var(--dim); font-size: 13px; margin-bottom: 20px; }
+
+  /* 状态条 —— 把后端的配置直接亮出来，便于演示时解释 */
+  .bar {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px;
+    color: var(--dim); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 12px; margin-bottom: 18px;
+  }
+  .bar b { color: var(--fg); font-weight: 600; }
+
+  .ask { display: flex; gap: 8px; margin-bottom: 22px; }
+  textarea {
+    flex: 1; background: var(--panel); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px;
+    font: inherit; resize: vertical; min-height: 52px;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #08101f; border: 0; border-radius: 8px;
+    padding: 0 20px; font: inherit; font-weight: 650; cursor: pointer;
+  }
+  button:disabled { opacity: .45; cursor: default; }
+
+  .examples { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 24px; }
+  .chip {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--dim);
+    border-radius: 999px; padding: 4px 12px; font-size: 12.5px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--fg); }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; margin-bottom: 14px; overflow: hidden;
+  }
+  .card > h2 {
+    font-size: 13px; margin: 0; padding: 10px 14px; font-weight: 600;
+    color: var(--dim); border-bottom: 1px solid var(--line);
+    background: var(--panel2); display: flex; justify-content: space-between;
+  }
+  .card .body { padding: 14px; }
+
+  /* 答案正文 —— 引用标记 [1] 要显眼，因为它是"可溯源"的体现 */
+  .answer { white-space: pre-wrap; word-break: break-word; }
+  .answer .cite {
+    color: var(--accent); font-weight: 700; font-size: .85em;
+    background: rgba(91,157,255,.13); border-radius: 4px;
+    padding: 0 3px; margin: 0 1px; cursor: pointer;
+  }
+  .answer .cite:hover { background: rgba(91,157,255,.3); }
+
+  /* 弃答 —— 用明显不同的样式，让演示时一眼看出"它说了不知道" */
+  .abstain {
+    color: var(--warn); font-weight: 600;
+    background: rgba(255,180,84,.08); border-left: 3px solid var(--warn);
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+  }
+  .badge {
+    font-size: 11px; border-radius: 4px; padding: 1px 7px; font-weight: 600;
+    margin-left: 8px;
+  }
+  .badge.ok  { background: rgba(61,220,151,.15); color: var(--ok); }
+  .badge.bad { background: rgba(255,107,107,.15); color: var(--bad); }
+  .badge.warn{ background: rgba(255,180,84,.15);  color: var(--warn); }
+
+  /* 出处列表 */
+  .src { border-top: 1px solid var(--line); padding: 11px 14px; }
+  .src:first-child { border-top: 0; }
+  .src .top { display: flex; gap: 9px; align-items: baseline; font-size: 13px; }
+  .src .idx {
+    background: var(--accent); color: #08101f; border-radius: 5px;
+    font-weight: 700; padding: 1px 8px; font-size: 12px; flex: 0 0 auto;
+  }
+  .src .path { color: var(--fg); font-family: ui-monospace, Consolas, monospace;
+               font-size: 12.5px; word-break: break-all; }
+  .src .score { color: var(--dim); font-size: 12px; margin-left: auto; flex: 0 0 auto; }
+  .src .head { color: var(--dim); font-size: 12.5px; margin: 4px 0 5px 30px; }
+  .src .prev {
+    color: var(--dim); font-size: 12.5px; margin-left: 30px;
+    background: var(--panel2); border-radius: 6px; padding: 7px 10px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .hl { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .meta { color: var(--dim); font-size: 12px; margin-top: 10px; }
+  .warn-box {
+    border-left: 3px solid var(--bad); background: rgba(255,107,107,.07);
+    padding: 9px 13px; border-radius: 0 6px 6px 0; font-size: 13px;
+    margin-top: 10px;
+  }
+  details summary { cursor: pointer; color: var(--dim); font-size: 12.5px; }
+  details pre {
+    white-space: pre-wrap; word-break: break-word; font-size: 12.5px;
+    color: var(--dim); background: var(--panel2); padding: 9px;
+    border-radius: 6px; margin: 7px 0 0;
+  }
+  .cursor::after {
+    content: "▌"; color: var(--accent); animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0 } }
+</style>
+</head>
+<body>
+<div id="app" class="wrap">
+  <h1>RAG 知识库问答</h1>
+  <div class="sub">
+    完整链路：混合召回 → LLM 语义重排 → 带引用生成 → 机械校验。
+    答不出时**会说"资料中没有相关信息"**，而不是编。
+  </div>
+
+  <!-- 把后端配置直接亮出来 —— 演示时可以指着讲 -->
+  <div class="bar" v-if="health">
+    <span>语料 <b>{{ health.docs }}</b> 篇 / <b>{{ health.chunks }}</b> 块</span>
+    <span>召回池 <b>union@{{ health.recall_k }}</b></span>
+    <span>送 <b>{{ health.max_passages }}</b> 段给模型</span>
+    <span>模型 <b>{{ health.model }}</b></span>
+    <span>打分缓存 <b>{{ health.cache_entries }}</b> 条</span>
+    <span>弃答阈值 <b>{{ health.abstain_threshold }}</b></span>
+  </div>
+
+  <div class="ask">
+    <textarea v-model="question" rows="2" :disabled="busy"
+      placeholder="问一个和这个仓库相关的问题，比如：项目一现在有多少条测试通过？"
+      @keydown.ctrl.enter="ask" @keydown.meta.enter="ask"></textarea>
+    <button :disabled="busy || !question.trim()" @click="ask">
+      {{ busy ? '生成中…' : '提问' }}
+    </button>
+  </div>
+
+  <div class="examples">
+    <span class="chip" v-for="e in examples" :key="e.q" @click="pick(e.q)"
+          :title="e.why">{{ e.q }}</span>
+  </div>
+
+  <!-- 错误 -->
+  <div class="card" v-if="error">
+    <h2>出错了</h2>
+    <div class="body"><span class="abstain">{{ error }}</span></div>
+  </div>
+
+  <!-- 出处 —— 先于正文出现，这是"首字延迟低"的关键 -->
+  <div class="card" v-if="sources.length">
+    <h2>
+      <span>检索到的资料（{{ sources.length }} 段，已按相关度排序）</span>
+      <span>{{ elapsed }}</span>
+    </h2>
+    <div class="src" v-for="s in sources" :key="s.index"
+         :class="{ hl: highlighted === s.index }">
+      <div class="top">
+        <span class="idx">{{ s.index }}</span>
+        <span class="path">{{ s.path }}</span>
+        <span class="score">相关度 {{ s.score }} · {{ s.chars }} 字</span>
+      </div>
+      <div class="head" v-if="s.heading">{{ s.heading }}</div>
+      <div class="prev">{{ s.preview }}…</div>
+    </div>
+  </div>
+
+  <!-- 回答 -->
+  <div class="card" v-if="answerText || busy">
+    <h2>
+      <span>回答</span>
+      <span v-if="!busy && done">
+        <span class="badge" :class="done.abstained ? 'warn' : 'ok'">
+          {{ done.abstained ? '弃答' : '已作答' }}
+        </span>
+        <span class="badge" :class="done.scope_ok ? 'ok' : 'bad'">
+          作用域校验 {{ done.scope_ok ? '通过' : '拦下' }}
+        </span>
+        <span class="badge" v-if="done.invalid_citations && done.invalid_citations.length"
+              class="bad">非法引用 {{ done.invalid_citations }}</span>
+      </span>
+    </h2>
+    <div class="body">
+      <!--
+        弃答时用不同样式。注意这里渲染的是 answerText（可能已被
+        done 事件替换成弃答语），而不是最初的流式内容 ——
+        因为机械校验可能"事后"把内容拦下来（ADR-012）。
+      -->
+      <div v-if="abstained" class="abstain">{{ answerText }}</div>
+      <div v-else class="answer" :class="{ cursor: busy }" v-html="rendered"></div>
+
+      <div class="warn-box" v-if="done && !done.scope_ok">
+        <b>作用域校验拦下了这次回答</b><br>
+        下面的引用来自「不属于问题所问对象」的文档，所以改判为弃答：<br>
+        <span v-for="v in done.scope_violations" :key="v">· {{ v }}<br></span>
+        <details v-if="done.raw_text" style="margin-top:8px">
+          <summary>被拦下的原始回答（保留以便诊断）</summary>
+          <pre>{{ done.raw_text }}</pre>
+        </details>
+      </div>
+
+      <div class="meta" v-if="done">
+        引用 {{ done.cited.length ? '['+done.cited.join('] [')+']' : '（无）' }}
+        · 耗时 {{ done.elapsed_s }}s
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue;
+
+createApp({
+  setup() {
+    const question = ref('');
+    const busy = ref(false);
+    const answerText = ref('');
+    const sources = ref([]);
+    const done = ref(null);
+    const error = ref('');
+    const elapsed = ref('');
+    const highlighted = ref(0);
+    const health = ref(null);
+
+    // 示例问题分三类，演示时按"能答 / 该弃答"依次点
+    const examples = [
+      { q: '项目一现在有多少条测试通过？', why: '能答：事实查找' },
+      { q: '为什么日志要自己写一个立刻 flush 的 handler？', why: '能答：需要一点推理' },
+      { q: '前端界面是怎么分发的，为什么没有引入打包工具？', why: '能答：改写问句' },
+      { q: '项目一的测试用例文件叫什么名字？', why: '该弃答：项目二有类似信息，但不能拿来答' },
+      { q: '这个仓库的 GitHub star 数是多少？', why: '该弃答：语料里不可能有' },
+      { q: 'Transformer 的注意力机制时间复杂度是多少？', why: '该弃答：完全离题' },
+    ];
+
+    // 把 [n] 渲染成可点的标记，点了高亮对应出处
+    const rendered = computed(() => {
+      const esc = answerText.value
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return esc.replace(/\[(\d{1,2})\]/g,
+        (m, n) => `<span class="cite" data-i="${n}">[${n}]</span>`);
+    });
+
+    function pick(q) { question.value = q; ask(); }
+
+    async function ask() {
+      if (busy.value || !question.value.trim()) return;
+      busy.value = true; error.value = ''; answerText.value = '';
+      sources.value = []; done.value = null; elapsed.value = '';
+      const t0 = performance.now();
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: question.value.trim() }),
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        /*
+          手写 SSE 解析 —— 与项目一同样的做法（那里有完整 ADR）。
+          要点：
+            · 必须带 { stream: true }，否则多字节汉字被切在数据包之间会乱码
+            · 按 "\n\n" 切消息（空行是 SSE 的分隔符）
+            · 缓冲区要保留最后一段不完整的消息
+        */
+        const reader = res.body.getReader();
+        const dec = new TextDecoder('utf-8');
+        let buf = '';
+
+        while (true) {
+          const { value, done: fin } = await reader.read();
+          if (fin) break;
+          buf += dec.decode(value, { stream: true });
+
+          const parts = buf.split('\n\n');
+          buf = parts.pop();          // 最后一段可能不完整，留着
+          for (const block of parts) {
+            let ev = 'message', data = '';
+            for (const line of block.split('\n')) {
+              if (line.startsWith('event:')) ev = line.slice(6).trim();
+              else if (line.startsWith('data:')) data += line.slice(5).trim();
+            }
+            if (!data) continue;
+            let obj; try { obj = JSON.parse(data); } catch { continue; }
+
+            if (ev === 'sources') sources.value = obj;
+            else if (ev === 'delta') {
+              answerText.value += obj.text;
+              elapsed.value = ((performance.now() - t0) / 1000).toFixed(1) + 's';
+            }
+            else if (ev === 'done') {
+              done.value = obj;
+              // ⚠️ 关键：机械校验可能把正文替换掉（弃答），
+              //    所以要用 final_text 覆盖，不能只信流式累积的内容
+              if (obj.final_text !== undefined) answerText.value = obj.final_text;
+            }
+            else if (ev === 'error') error.value = obj.message;
+          }
+        }
+      } catch (e) {
+        error.value = String(e);
+      } finally {
+        busy.value = false;
+      }
+    }
+
+    // 点引用标记 -> 高亮对应出处
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('.cite');
+      if (el) highlighted.value = Number(el.dataset.i);
+    });
+
+    fetch('/api/health').then(r => r.json()).then(d => health.value = d)
+      .catch(() => {});
+
+    const abstained = computed(() => !!(done.value && done.value.abstained));
+    return { question, busy, answerText, sources, done, error, elapsed,
+             highlighted, health, examples, rendered, abstained, pick, ask };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
