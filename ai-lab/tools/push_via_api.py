@@ -135,6 +135,105 @@ def changed_files(commit: str) -> list[str]:
     return files
 
 
+def sync_stale_files(token: str, label: str = "") -> int:
+    """
+    对比本地 HEAD 与远端 main 的每个文件 blob，把**不一致的逐个补齐**。
+
+    返回补齐的文件数。
+
+    ## 为什么必须在推送**之前**调，而且必须独立于推送
+
+    本脚本的推送逻辑是"按本提交相对远端的差异"发文件的。
+    但本地与远端的 SHA **长期分叉**（每次 API 推送都会生成一个
+    GitHub 自己的 commit 对象），分叉累积后这个"哪些文件变了"
+    的判定会**漏项** —— 文件被静默跳过、远端停在旧版，
+    而脚本报"推送完成"。
+
+    实测抓到过：一次推送漏了 3 个文件（ADR.md / README.md / main.py，
+    内容差 1000+ 字符，远端**完全没有** `warm_cache` 这个修复）。
+
+    更麻烦的是它**自我循环**：修这个脚本本身要靠这个脚本来推。
+    如果只在"有东西要推"的分支里自检，那么当远端被判定为
+    "本地子集"（不需要推）时就跳过了自检，问题永远修不掉。
+
+    所以：自检必须是**独立的一步**，无论走哪条分支都要跑。
+    """
+    local_blobs = _local_blobs()
+    remote_blobs = _remote_blobs(token)
+    missing = sorted(set(local_blobs) - set(remote_blobs))
+    differing = sorted(p for p in set(local_blobs) & set(remote_blobs)
+                       if local_blobs[p] != remote_blobs[p])
+    stale = missing + differing
+
+    prefix = f"  [{label}] " if label else "  "
+    if not stale:
+        print(f"{prefix}✅ 本地与远端一致（{len(local_blobs)} 个文件的 blob 全同）")
+        return 0
+
+    print(f"{prefix}⚠️ 发现 {len(stale)} 个文件与远端不一致（推送漏项）：")
+    for p in stale:
+        print(f"{prefix}    [{'远端缺失' if p in missing else '内容不同'}] {p}")
+    print(f"{prefix}逐个按 **git 索引内容**（不是磁盘内容）强制同步：")
+    n = 0
+    for p in stale:
+        raw = subprocess.run(
+            ["git", "-C", str(REPO), "show", f"HEAD:{p}"],
+            capture_output=True).stdout
+        if not raw:
+            print(f"{prefix}    [跳过] {p}（git 里取不到）")
+            continue
+        # 建 blob
+        blob = api("POST", f"/repos/{OWNER}/{NAME}/git/blobs", token,
+                   {"content": base64.b64encode(raw).decode("ascii"),
+                    "encoding": "base64"})
+        # 基于远端当前 tree 建新 tree（只改这一个文件）
+        ref = api("GET", f"/repos/{OWNER}/{NAME}/git/ref/heads/main", token)
+        parent = ref["object"]["sha"]
+        pcommit = api("GET", f"/repos/{OWNER}/{NAME}/git/commits/{parent}", token)
+        ntree = api("POST", f"/repos/{OWNER}/{NAME}/git/trees", token,
+                    {"base_tree": pcommit["tree"]["sha"],
+                     "tree": [{"path": p, "mode": "100644",
+                               "type": "blob", "sha": blob["sha"]}]})
+        nc = api("POST", f"/repos/{OWNER}/{NAME}/git/commits", token,
+                 {"message": f"fix(sync): 补上 API 推送漏掉的 {p}",
+                  "tree": ntree["sha"], "parents": [parent]})
+        api("PATCH", f"/repos/{OWNER}/{NAME}/git/refs/heads/main", token,
+            {"sha": nc["sha"], "force": False})
+        print(f"{prefix}    ✅ {p}  -> {nc['sha'][:8]}")
+        n += 1
+    return n
+
+
+def _local_blobs() -> dict[str, str]:
+    """
+    本地 HEAD 的 {路径: blob sha}。
+
+    抽成函数是为了让"推送前的安全检查"和"推送后的自检"**用同一份逻辑** ——
+    这个脚本上我已经因为"同一判断两处实现"吃过亏
+    （`remote_is_subset_of_local` 里内联了一份，自检又写一份，迟早漂移）。
+    """
+    out: dict[str, str] = {}
+    for line in git("ls-tree", "-r", "HEAD").splitlines():
+        if not line.strip():
+            continue
+        meta, path = line.split("\t", 1)
+        parts = meta.split()
+        if len(parts) >= 3 and parts[1] == "blob":
+            out[path] = parts[2]
+    return out
+
+
+def _remote_blobs(token: str) -> dict[str, str]:
+    """远端 main 的 {路径: blob sha}（走 trees API ?recursive=1）。"""
+    ref = api("GET", f"/repos/{OWNER}/{NAME}/git/ref/heads/main", token)
+    commit = api("GET", f"/repos/{OWNER}/{NAME}/git/commits/{ref['object']['sha']}",
+                 token)
+    tree = api("GET",
+               f"/repos/{OWNER}/{NAME}/git/trees/{commit['tree']['sha']}?recursive=1",
+               token)
+    return {e["path"]: e["sha"] for e in tree["tree"] if e["type"] == "blob"}
+
+
 def remote_is_subset_of_local(remote_sha: str, token: str,
                               max_commits: int = 60) -> tuple[bool, list[str]]:
     """
@@ -272,6 +371,22 @@ def main() -> int:
     print(f"  远端 main: {remote_sha[:8]}")
     print()
 
+    # ================================================================
+    # 先补齐"推送漏项"，再做常规推送
+    # ================================================================
+    #
+    # 顺序很重要：先把远端补齐到与本地一致，后面的推送才会有正确的基准树。
+    # 而且这一步必须**独立于**后面的分支 —— 否则当远端被判定为
+    # "本地子集、无需推送"时会跳过自检，漏项就永远修不掉（实测踩到过）。
+    if args.apply:
+        n_synced = sync_stale_files(token, label="推送前自检")
+        if n_synced:
+            print(f"  → 已补齐 {n_synced} 个文件，重新读取远端状态")
+            ref = api("GET", f"/repos/{OWNER}/{NAME}/git/ref/heads/main", token)
+            remote_sha = ref["object"]["sha"]
+            print(f"  远端 main: {remote_sha[:8]}")
+        print()
+
     # 安全检查：远端的提交必须是本地的祖先（否则会覆盖别人的提交）
     is_ancestor = subprocess.run(
         ["git", "-C", str(REPO), "merge-base", "--is-ancestor", remote_sha, sha_local],
@@ -400,6 +515,14 @@ def main() -> int:
         {"sha": commit["sha"], "force": bool(need_override)})
     print(f"  ✅ refs/heads/main -> {commit['sha'][:8]}"
           f"{'（force）' if need_override else ''}")
+    print()
+
+    # 推送后再核一次 —— 确认这次推送真的把内容送上去了
+    # （上面"推送前自检"保证了基准是对的，这里是防止推送本身又引入漏项）
+    print("=" * 78)
+    if sync_stale_files(token, label="推送后核验"):
+        print("  （本轮的漏项已补齐 —— 说明推送逻辑仍不可靠，值得查）")
+
     print()
     print("=" * 78)
     print("  推送完成（通过 API）。")
