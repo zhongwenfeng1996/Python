@@ -42,6 +42,7 @@ sys.path.insert(0, str(HERE.parent))
 from rag.chunking import STRATEGIES, chunk_document     # noqa: E402
 from rag.corpus import load_corpus                       # noqa: E402
 from rag.embeddings import get_embedder                  # noqa: E402
+from rag.rerank import LexicalReranker, RerankWeights, TwoStageRetriever  # noqa: E402
 from rag.retrieve import Retriever                       # noqa: E402
 from rag.store import Store                              # noqa: E402
 
@@ -205,6 +206,26 @@ def main() -> int:
                     help="门禁，如 recall@5=0.6,mrr=0.5")
     ap.add_argument("--report", default=str(HERE / "report.json"))
     ap.add_argument("--verbose", action="store_true", help="列出每条题的命中情况")
+    # ---- 重排相关（见 ADR-007）----
+    ap.add_argument("--rerank", action="store_true",
+                    help="打开两段式：粗召回 + 词法重排")
+    ap.add_argument("--recall-channels", default="union",
+                    choices=["union", "dense", "sparse", "hybrid"],
+                    help="第一阶段召回方式。union = 两路各取 topN 求并集交给重排")
+    ap.add_argument("--recall-k", type=int, default=50,
+                    help="第一阶段每路召回多少个候选")
+    ap.add_argument("--w-overlap", type=float, default=1.0, help="重排权重：IDF 词重叠")
+    ap.add_argument("--w-heading", type=float, default=RerankWeights().heading,
+                    help="重排权重：标题命中（默认取自 RerankWeights）")
+    # ⚠️ 这里的默认值必须与 RerankWeights 的默认值一致。
+    #    踩过的坑：dataclass 里把 proximity 默认改成 0（实测有害），
+    #    但 CLI 这边还写着 0.3 —— argparse 的默认值会**覆盖** dataclass 的默认值，
+    #    于是"改了默认值"其实没生效，指标一直没变，白跑了几轮。
+    #    教训：默认值只留一个来源，或者两处必须同步。
+    ap.add_argument("--w-proximity", type=float, default=RerankWeights().proximity,
+                    help="重排权重：邻近度（实测有害，默认 0）")
+    ap.add_argument("--w-dense", type=float, default=RerankWeights().dense_prior,
+                    help="重排权重：原始稠密分数先验")
     args = ap.parse_args()
 
     qpath = Path(args.questions)
@@ -233,6 +254,24 @@ def main() -> int:
     store.build(chunks, embedder, batch_size=64)
     retriever = Retriever(store, embedder)
 
+    # ---- 可选：两段式（粗召回 + 重排）----
+    # 重排器需要全语料的 IDF 统计，所以要把所有块文本传进去预计算。
+    reranker = None
+    two_stage = None
+    if args.rerank:
+        weights = RerankWeights(
+            overlap=args.w_overlap,
+            heading=args.w_heading,
+            proximity=args.w_proximity,
+            dense_prior=args.w_dense,
+        )
+        reranker = LexicalReranker([c.text for c in chunks], weights=weights)
+        two_stage = TwoStageRetriever(
+            retriever, reranker,
+            recall_channels=args.recall_channels,
+            recall_k=args.recall_k,
+        )
+
     print("=" * 78)
     print("  检索评估 · recall@k / MRR")
     print("=" * 78)
@@ -243,13 +282,27 @@ def main() -> int:
           f"不可答 {sum(1 for q in questions if not q.answerable)}）")
     print(f"  k          : {args.k}")
     print(f"  拒答阈值   : {args.abstain_threshold}")
+    if args.rerank:
+        print(f"  重排       : 开  召回={args.recall_channels}@{args.recall_k}  "
+              f"权重 overlap={args.w_overlap} heading={args.w_heading} "
+              f"proximity={args.w_proximity} dense_prior={args.w_dense}")
+    else:
+        print("  重排       : 关（加 --rerank 打开）")
     print()
 
     modes = [m.strip() for m in args.modes.split(",") if m.strip()]
     results: list[EvalResult] = []
     for mode in modes:
-        r = evaluate(retriever, questions, mode, args.strategy,
-                     k=args.k, abstain_threshold=args.abstain_threshold)
+        if mode == "rerank":
+            if two_stage is None:
+                print("  ⚠️ --modes 里有 rerank 但没加 --rerank，跳过")
+                continue
+            # 用两段式检索器替换掉单通道检索器
+            r = evaluate(two_stage, questions, "rerank", args.strategy,
+                         k=args.k, abstain_threshold=args.abstain_threshold)
+        else:
+            r = evaluate(retriever, questions, mode, args.strategy,
+                         k=args.k, abstain_threshold=args.abstain_threshold)
         results.append(r)
 
     # ---- 对比表（这是项目的核心产出）----
