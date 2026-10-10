@@ -198,6 +198,49 @@ def remote_is_subset_of_local(remote_sha: str, token: str,
     return (not missing and not differing), lines
 
 
+def _normalize_eol(raw: bytes, path: str) -> tuple[bytes, str]:
+    """
+    按 git 的 eol=lf 规则把 CRLF 归一成 LF。返回 (内容, 备注)。
+
+    ## 为什么必须做（这个 bug 很隐蔽）
+
+    `.gitattributes` 规定 `* text=auto eol=lf`，所以 **git 索引里永远是 LF**。
+    但**磁盘工作区可能是 CRLF** —— 而 `git add` 会自动归一化，
+    于是 `git status` 是干净的：**索引 LF、磁盘 CRLF，和平共处，看不出来**。
+
+    这个脚本却是直接 `read_bytes()` 发给 GitHub 的 → 远端存成 CRLF。
+    实测：README 本地 18188 字符/0 个 CRLF，远端 18788 字符/600 个 CRLF。
+    内容一模一样，只是 blob 哈希不同 → 报"本地与远端 tree 不一致"，
+    而且 **git 永远不会去修它**（因为 git 认为本地是干净的）。
+
+    ## 哪些文件不能碰
+
+    二进制文件绝对不能做行尾替换 —— 图片、SQLite 库、zip 里的
+    0x0D0A 序列会被破坏。判据：
+      · 扩展名在白名单里（明确的文本类型），或
+      · 内容里不含 NUL 字节（二进制通常含）
+    """
+    # 明确的二进制扩展名 —— 直接放过
+    binary_ext = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf",
+                  ".zip", ".gz", ".whl", ".exe", ".dll", ".so", ".dylib",
+                  ".db", ".sqlite3", ".woff", ".woff2", ".ttf", ".xlsx",
+                  ".docx", ".pptx", ".mp4", ".mp3", ".bin", ".esd", ".wim"}
+    ext = Path(path).suffix.lower()
+    if ext in binary_ext:
+        return raw, ""
+
+    # 含 NUL 字节 → 当二进制处理（文本文件不会有 NUL）
+    if b"\x00" in raw:
+        return raw, ""
+
+    if b"\r\n" not in raw:
+        return raw, ""
+
+    n_crlf = raw.count(b"\r\n")
+    fixed = raw.replace(b"\r\n", b"\n")
+    return fixed, f", CRLF {n_crlf}→0"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="真正推送（默认只预览）")
@@ -294,7 +337,33 @@ def main() -> int:
         if not full.exists():
             print(f"    [跳过] {path}（本地不存在）")
             continue
+
         raw = full.read_bytes()
+
+        # ============================================================
+        # 行尾符归一化 —— 必须做，否则 API 推送会与 git 索引不一致
+        # ============================================================
+        #
+        # 【踩过的坑】本仓库的 .gitattributes 规定 `* text=auto eol=lf`，
+        # 所以 git 索引里存的永远是 LF。但**磁盘上的工作区文件可能是 CRLF**
+        # （我用 Python 写文件时默认就是 CRLF，编辑器也可能加）。
+        #
+        # 而 `git add` 时会自动归一化，所以 `git status` 是干净的 ——
+        # **索引里是 LF，磁盘上是 CRLF，两者共存且看不出问题**。
+        #
+        # 但这个脚本是直接把 `read_bytes()` 发给 GitHub 的，
+        # 于是远端存的就是 CRLF。实测抓到：
+        #     ai-lab/projects/project2-rag/README.md
+        #     本地 git 18188 字符 / 0 个 CRLF
+        #     远端 API 18788 字符 / 600 个 CRLF
+        # 内容一模一样，但 blob 哈希不同 → "本地与远端 tree 不一致"，
+        # 而且这个差异会**一直存在**，因为 git 认为本地是干净的、
+        # 根本不会去推这个文件。
+        #
+        # 修法：对文本文件按 git 的规则把 CRLF 归一成 LF。
+        # 二进制文件（图片等）绝对不能碰，所以要先判类型。
+        raw, note = _normalize_eol(raw, path)
+
         # mode 以 git 记录的为准（见 git_modes 的说明：不要按 shebang 猜）
         mode = modes.get(path, "100644")
         if args.apply:
@@ -305,7 +374,7 @@ def main() -> int:
         else:
             blob_sha = "(preview)"
         tree_items.append({"path": path, "mode": mode, "type": "blob", "sha": blob_sha})
-        print(f"    [{status}] {path}  ({len(raw)} 字节, mode={mode})")
+        print(f"    [{status}] {path}  ({len(raw)} 字节, mode={mode}{note})")
 
     print()
     if not args.apply:
