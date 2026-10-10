@@ -72,8 +72,11 @@ def main() -> int:
         r10 = r20 = r50 = r100 = 0
         for q in answerable:
             if mode == "union":
-                # 与 rag/rerank.py 的 recall() 保持一致：**交错**合并，
-                # 否则 dense 的重复项会把 sparse 独有的候选挤出池外
+                # ⚠️ 这两行必须与 rag/rerank.py 的 recall() 保持一致 ——
+                #    这里踩过：rerank.py 改成"每路取满 recall_k、再交错合并"后，
+                #    忘了改这份拷贝，于是诊断显示的数字对不上，
+                #    让人误以为合并策略还有问题。
+                #    **同一逻辑有两份实现时，改一处必须同步另一处。**
                 d = retriever.search(q.question, k=50, mode="dense")
                 sp = retriever.search(q.question, k=50, mode="sparse")
                 merged = []
@@ -90,6 +93,15 @@ def main() -> int:
                                source_path=h.source_path, heading_path=h.heading_path,
                                text=h.text, rank=i + 1, channel=h.channel)
                         for i, h in enumerate(merged)]
+                # ⚠️ 但**不能用 rank_of(hits) 去评 union 的 recall@k**：
+                #    union 的池子比 k 大（两路并集），而"名次"只是展示顺序。
+                #    按名次算会低估它 —— 实测踩到过 union recall@50 = 0.9808
+                #    低于 sparse 的 1.0000，看起来像合并又坏了，
+                #    其实是"用错口径衡量"。
+                #    正确口径：只看 **gold 在不在池子里**（池子大小就是它的 recall@池）。
+                r = 1 if any(h.source_path == q.gold_doc for h in hits) else 0
+                if r: r10 += 1; r20 += 1; r50 += 1; r100 += 1
+                continue
             else:
                 hits = retriever.search(q.question, k=100, mode=mode)
             r = rank_of(hits, q.gold_doc)

@@ -282,23 +282,34 @@ class TwoStageRetriever:
         """
         第一阶段：便宜地召回一批候选。
 
-        ## union 为什么必须**交错**合并，而不是先 dense 后 sparse 拼接
+        ## 池子不该有"取前 N 个"这回事（踩了三次才想明白）
 
-        实测踩到的坑（见 eval/diagnose_rerank.py 的输出）：
+        **坑 1：拼接**（先 dense 全部、再 sparse 全部）。
+        重复项先占名额，sparse 独有的候选被挤掉：
+            sparse 单独 recall@50 = 1.0000，拼接版 = 0.9615
 
-            sparse       recall@50 = 1.0000     ← 完美
-            union(50+50) recall@50 = 0.9615     ← 反而缺了一个 gold！
+        **坑 2：交错合并**。仍然是"两路混在一个固定长度的列表里"，
+        交错会让 sparse 的**尾部**落到第 50 位之后：
+            sparse 单独 recall@50 = 1.0000，交错版 = 0.9808
 
-        原因：第一版是按 dense 全部、再 sparse 全部的顺序**拼接**。
-        同一个块可能被两路都召回，于是 dense 的 50 个（含重复）先把
-        名额占了，sparse 里那些**只有 sparse 能找到**的块被挤到池外。
+        **坑 3：加大 recall_k**。对最终指标毫无影响（50→200 结果一样），
+        因为重排只取 top_k，**池子大小不是瓶颈，打分才是**。
 
-        交错合并（dense[0], sparse[0], dense[1], sparse[1], …）保证
-        两路在池中的占比均衡，不会有一路被系统性饿死。
+        ## 结论
+
+        既然 RRF 融合已经被否定（ADR-004），两路就**不应该竞争同一批名额**。
+        池子 = 两路召回结果的**完整并集**（各自取满 recall_k，去重）。
+        代价只是重排多算几次成对打分（便宜的词法运算），
+        换来的是"每一路找到的东西一个都不丢"—— 这笔交易在检索里总是划算的，
+        因为**漏掉 gold 是无法补救的**。
+
+        池子规模 50~100（取决于两路重合度），对本项目是毫秒级开销。
         """
         if self.recall_channels != "union":
             return self.r.search(query, k=self.recall_k, mode=self.recall_channels)
 
+        # 两路各取满 recall_k，然后按"排名交替"排出 —— 但这只是**展示顺序**，
+        # 不代表截断：所有候选都在池子里，重排会看全量。
         dense = self.r.search(query, k=self.recall_k, mode="dense")
         sparse = self.r.search(query, k=self.recall_k, mode="sparse")
 

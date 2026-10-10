@@ -14,7 +14,16 @@
 //    corpus.py 把 project2-rag 排除了（防止评估时从自己的设计文档里"抄答案"），
 //    所以拿它当 gold_doc 会直接校验不过 —— 这是自相矛盾的题。
 //
-// 覆盖类型：fact（事实查找）/ cross（跨段推理）/ code（代码相关）/ unanswerable（拒答）
+// ⚠️ 第二个坑（2026-10 修的）：**题面用词不能和文档高度重合**。
+//    审计脚本 eval/audit_questions.py 量过：最初 30 条里，题面 n-gram 与
+//    gold 文档重合率 ≥0.55 的占 53.8%，改写问句只有 11.5%。
+//    后果是 **sparse（词法检索）显得近乎满分（recall@5 = 1.0）**，
+//    既掩盖了词法方案的真实短板，也无法为将来接入真实 embedding
+//    提供有意义的对照基线。
+//    于是补了 q031~q054，其中 q031~q048 是**刻意改写**（问法避开文档原词）。
+//
+// 覆盖类型：fact（事实查找）/ cross（跨段推理）/ code（代码相关）/
+//           rewrite（改写问句，考验语义而非字面匹配）/ unanswerable（拒答）
 
 {"id":"q001","question":"章节重排后 def 在第几章教？","answer":"第 04 章 · 函数。原设计在第 05 章，重排后提到第 04 章，因为第 05 章要讲函数级作用域，而作用域必须用到 def。","gold_doc":"ai-lab/python_basics/docs/04-函数.md","type":"fact","difficulty":"easy","must_contain":"函数"}
 {"id":"q002","question":"首 token 超时的默认值是多少秒？","answer":"默认 8 秒，触发降级到备用模型；总超时是 60 秒作为兜底。","gold_doc":"ai-lab/projects/project1-stream-chat/docs/ADR.md","type":"fact","difficulty":"easy","must_contain":"8"}
@@ -46,3 +55,37 @@
 {"id":"q028","question":"数据集里哪个陷阱和订阅取消日期有关？","answer":"取消日期被钳制过，不能晚于数据生成的时间点，否则会出现未来日期。","gold_doc":"STATUS.md","type":"fact","difficulty":"medium","must_contain":"陷阱"}
 {"id":"q029","question":"MCP 和普通 function calling 的机制级区别是什么？","answer":"MCP 是独立的进程通过标准传输协议通信，工具在进程外；function calling 是模型输出结构化调用意图由宿主执行。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"cross","difficulty":"hard","must_contain":"MCP"}
 {"id":"q030","question":"为什么前端要用 TextDecoder 并带 stream 选项？","answer":"因为 UTF-8 多字节字符可能被切在两个 chunk 之间，不带 stream 选项会解码出乱码。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"code","difficulty":"hard","must_contain":"TextDecoder"}
+
+// ===== 以下 q031~q048 是**刻意改写**的问句 =====
+// 特点：问法避开 gold 文档里的原词，考验语义理解而非字面匹配。
+// 目的：让词法方案（sparse）的真实短板暴露出来，而不是靠题面友好刷高分。
+
+{"id":"q031","question":"前端界面是怎么分发的，为什么没有引入打包工具？","answer":"前端走 CDN 直接加载 Vue 3，不引入构建链。省掉了 node 工具链的复杂度，代价是没有单文件组件和类型检查。","gold_doc":"ai-lab/projects/project1-stream-chat/docs/ADR.md","type":"rewrite","difficulty":"medium","must_contain":"Vue 3 走 CDN"}
+{"id":"q032","question":"服务端保存了对话上下文吗？","answer":"没有。后端完全无状态，每一轮请求都由前端把完整历史一起提交上来。","gold_doc":"ai-lab/projects/project1-stream-chat/docs/ADR.md","type":"rewrite","difficulty":"easy","must_contain":"完全无状态"}
+{"id":"q033","question":"为什么可选的模型不是通过配置文件管理的？","answer":"模型清单直接写在源码里，没有做成外部可编辑的配置文件，这是有意的取舍。","gold_doc":"ai-lab/projects/project1-stream-chat/docs/ADR.md","type":"rewrite","difficulty":"medium","must_contain":"写在代码里"}
+{"id":"q034","question":"验收时为什么要启动一个真实的服务器进程？","answer":"因为内存里的模拟传输不经过真正的网络套接字，客户端断开后上游有没有停止这类行为根本测不了。","gold_doc":"ai-lab/projects/project1-stream-chat/docs/ADR.md","type":"rewrite","difficulty":"hard","must_contain":"真进程 + 真 HTTP"}
+{"id":"q035","question":"时间字段的存储方式为什么会影响统计结果？","answer":"因为约三成的事件用 +08:00 表示（与 UTC 是同一时刻）。用字符串比较时间必然出错。","gold_doc":"ai-lab/README.md","type":"rewrite","difficulty":"hard","must_contain":"时区不一致"}
+{"id":"q036","question":"用户来源字段存在什么数据质量问题？","answer":"11 种原始写法实际只有 7 个渠道，还有 98 行是空值；不归一化就会把一个渠道拆成多行。","gold_doc":"ai-lab/README.md","type":"rewrite","difficulty":"medium","must_contain":"渠道名大小写不一"}
+{"id":"q037","question":"为什么不能直接对邮箱列做去重计数？","answer":"有 6 行邮箱是已有用户的大写版本，直接去重会把同一个人算成两个。","gold_doc":"ai-lab/README.md","type":"rewrite","difficulty":"hard","must_contain":"COUNT(DISTINCT email)"}
+{"id":"q038","question":"哪些订阅是收不到钱的？","answer":"免费与试用用户没有付款记录。收入统计若走 subscriptions 而不是 payments，会算到没收到的钱。","gold_doc":"ai-lab/README.md","type":"rewrite","difficulty":"medium","must_contain":"免费与试用用户无付款记录"}
+{"id":"q039","question":"退款记录在金额上有什么需要注意的？","answer":"refunded 的金额是正数需要显式扣除，failed 从未收款必须排除。","gold_doc":"ai-lab/README.md","type":"rewrite","difficulty":"hard","must_contain":"退款与失败付款"}
+{"id":"q040","question":"最近的登录数据能直接用来算趋势吗？","answer":"不能。近期活跃被人为压低了四成：登录事件 2037 降到 1203，而同期付费 192 涨到 202 基本不动。","gold_doc":"ai-lab/README.md","type":"rewrite","difficulty":"hard","must_contain":"1,203"}
+{"id":"q041","question":"如果输出缓冲出问题，会造成什么现象？","answer":"服务端产生的信息要攒够一块才会落盘，于是操作完要等好几秒才能看到对应的记录。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"rewrite","difficulty":"hard","must_contain":"块缓冲"}
+{"id":"q042","question":"怎么证明质量指标不是摆设？","answer":"故意让上游每次回复都不同，如果指标是真的它必须报警。实测默认上游稳定性 100%，扰动后降到 0%。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"rewrite","difficulty":"hard","must_contain":"稳定性"}
+{"id":"q043","question":"第二层的教程假设读者已经会什么？","answer":"假设已经读完第一层的十章：变量与类型、函数、条件循环、异常与文件、模块、类、异步、调试。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"rewrite","difficulty":"medium","must_contain":"前置要求"}
+{"id":"q044","question":"课程里为什么没有讲依赖注入、生命周期这些内容？","answer":"这是有意的边界划定：这些不影响读懂项目一，等真正需要时再查。README 里列了没覆盖的清单。","gold_doc":"ai-lab/python_basics/backend/README.md","type":"rewrite","difficulty":"hard","must_contain":"诚实清单"}
+{"id":"q045","question":"前端接收到的字符为什么会变成乱码？","answer":"因为一个多字节字符可能被切在两个数据包之间，解码时不带流式选项就会出错。","gold_doc":"ai-lab/projects/project1-stream-chat/README.md","type":"rewrite","difficulty":"hard","must_contain":"TextDecoder"}
+{"id":"q046","question":"调试信息为什么不能随便打印到输出？","answer":"协议要求标准输出上每一行都是合法的 JSON-RPC 消息，任何多余的打印都会破坏它。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"rewrite","difficulty":"medium","must_contain":"破坏 JSON-RPC"}
+{"id":"q047","question":"服务器怎么判断一条消息收完了？","answer":"标准输入上按行分帧，一条消息占一行，换行符就是边界。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"rewrite","difficulty":"medium","must_contain":"按行分帧"}
+{"id":"q048","question":"客户端代码怎么知道调用出错了？","answer":"框架会返回结构化的错误对象并带上错误码，比如方法不存在是 -32601，JSON 坏了是 -32700。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"rewrite","difficulty":"medium","must_contain":"-32601"}
+
+// ===== 以下 q049~q056 为补足覆盖面 =====
+
+{"id":"q049","question":"数据集里的时区问题具体有多大的比例？","answer":"30.4% 的事件以 +08:00 表示，它们与 UTC 表示的是同一个时刻。","gold_doc":"ai-lab/README.md","type":"fact","difficulty":"medium","must_contain":"30.4%"}
+{"id":"q050","question":"教程一共分几层，各自目标是什么？","answer":"两层：第一层是基础篇十章，目标是读懂 AI 应用的代码；第二层是后端篇六章，目标是写出能用的后端服务。","gold_doc":"ai-lab/python_basics/README.md","type":"fact","difficulty":"easy","must_contain":"两层"}
+{"id":"q051","question":"为什么教程要规定章节顺序不能乱？","answer":"因为是零前置的硬规则：第 N 章只允许用第 1 到 N 章教过的写法，由脚本强制检查。","gold_doc":"ai-lab/python_basics/docs/README.md","type":"fact","difficulty":"medium","must_contain":"零前置"}
+{"id":"q052","question":"为什么 MCP 的实验里没有放读取文件或执行命令的工具？","answer":"那些工具会带来副作用，安全边界无法控制，所以作者刻意不提供，README 里有专门一节说明。","gold_doc":"ai-lab/projects/mcp-minimal/README.md","type":"cross","difficulty":"medium","must_contain":"故意**不**提供"}
+{"id":"q053","question":"用什么工具检查文档里的说法和实际是否一致？","answer":"check_doc_env.py，它跑 22 项一致性断言。","gold_doc":"ai-lab/README.md","type":"code","difficulty":"medium","must_contain":"check_doc_env"}
+{"id":"q054","question":"数据集里的渠道字段为什么不能直接分组统计？","answer":"11 种原始写法实际只有 7 个渠道，还有 98 行是空值，不先做小写与去空格归一化就会拆出多余的行。","gold_doc":"ai-lab/README.md","type":"cross","difficulty":"hard","must_contain":"lower(trim())"}
+{"id":"q055","question":"文档说活跃下跌、数据却说上涨，这种矛盾是怎么发现的？","answer":"早先的实现只给最后 30 天注入登录、此前一条都不补，导致最后一个月反而是上月的 2.6 倍。现在改成两处走同一个注入函数并加了断言。","gold_doc":"ai-lab/README.md","type":"rewrite","difficulty":"hard","must_contain":"2.6 倍"}
+{"id":"q056","question":"为什么 .ps1 文件必须要加字节顺序标记？","answer":"因为旧版 PowerShell 读无标记的脚本时会按本地编码解码，中文注释会吃掉引号并报出误导人的语法错误。","gold_doc":"ai-lab/docs/windows-quickstart.md","type":"rewrite","difficulty":"medium","must_contain":"BOM"}
