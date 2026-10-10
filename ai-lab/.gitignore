@@ -1,6 +1,21 @@
 # 生成物（可随时用脚本重建，不入库）
 data/out/*.csv
 
+# 项目二的索引与缓存 —— **都是可重建的生成物**
+#
+# ⚠️ 路径要**相对于这个 .gitignore 所在的目录**（也就是 ai-lab/），
+#    不是相对于仓库根。踩过两次：
+#      第一次：只忽略了 *.db，于是 llm-score-cache.json（194 KB）
+#              和 report-llm.json 被 git add -A 一起提交了。
+#      第二次：补规则时写成 `ai-lab/projects/project2-rag/data/`，
+#              多写了一层前缀 → **规则静默不生效**，
+#              而 `git check-ignore` 不报错、只是没输出，很容易看漏。
+#              正确写法是 `projects/project2-rag/data/`。
+#
+#    也不能写成通用的 `data/`：ai-lab/data/ 下有 schema.sql 这样的
+#    **源文件**要入库，宽规则会把以后要提交的文件也挡住。
+projects/project2-rag/data/
+
 # Python
 __pycache__/
 *.pyc
