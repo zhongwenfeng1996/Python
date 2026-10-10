@@ -238,10 +238,16 @@ createApp({
     const health = ref(null);
 
     // 示例问题分三类，演示时按"能答 / 该弃答"依次点
+    //
+    // ⚠️ 这几条必须与 backend/main.py 的 DEMO_QUESTIONS **对应** ——
+    //    前端能点的题后端都预热过，否则用户点了要等几十秒（看起来像卡死）。
+    //    用 tools/check_demo_lists.py 检查两处是否漂移。
     const examples = [
       { q: '项目一现在有多少条测试通过？', why: '能答：事实查找' },
       { q: '为什么日志要自己写一个立刻 flush 的 handler？', why: '能答：需要一点推理' },
       { q: '前端界面是怎么分发的，为什么没有引入打包工具？', why: '能答：改写问句' },
+      { q: '为什么 .ps1 脚本必须带 UTF-8 BOM？', why: '能答：Windows 环境的坑' },
+      { q: 'MCP 和普通 function calling 的机制级区别是什么？', why: '能答：概念对比' },
       { q: '项目一的测试用例文件叫什么名字？', why: '该弃答：项目二有类似信息，但不能拿来答' },
       { q: '这个仓库的 GitHub star 数是多少？', why: '该弃答：语料里不可能有' },
       { q: 'Transformer 的注意力机制时间复杂度是多少？', why: '该弃答：完全离题' },
