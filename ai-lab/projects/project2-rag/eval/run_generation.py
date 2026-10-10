@@ -62,8 +62,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="只跑前 N 条（0=全部）")
     ap.add_argument("--k", type=int, default=5)
-    ap.add_argument("--recall-k", type=int, default=15,
-                    help="重排候选数（15 是实测的饱和点，见 ADR-009）")
+    ap.add_argument("--recall-k", type=int, default=50,
+                    help="重排候选池大小。**默认 50 是实测出来的**：\n"
+                         "15→答案块@5 = 0.8462，50→0.9423，90→0.9423（饱和）\n"
+                         "见 ADR-010。代价是每查询打分次数 ×3.1")
     ap.add_argument("--abstain-threshold", type=float, default=3.0)
     ap.add_argument("--max-passages", type=int, default=5)
     ap.add_argument("--out", default=str(HERE.parent / "data" / "generation-results.json"))
