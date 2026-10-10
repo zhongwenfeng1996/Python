@@ -172,6 +172,73 @@ def _ensure_ready(recall_k: int = 50) -> dict:
     return _STATE
 
 
+#: 演示用的示例问题 —— 预热缓存与前端示例**共用这一份**，
+#: 避免"前端有的题没预热、预热了的题前端没有"这种错位。
+DEMO_QUESTIONS: list[str] = [
+    "项目一现在有多少条测试通过？",
+    "为什么日志要自己写一个立刻 flush 的 handler？",
+    "前端界面是怎么分发的，为什么没有引入打包工具？",
+    "项目一的测试用例文件叫什么名字？",
+    "这个仓库的 GitHub star 数是多少？",
+    "Transformer 的注意力机制时间复杂度是多少？",
+    "为什么 .ps1 脚本必须带 UTF-8 BOM？",
+    "MCP 和普通 function calling 的机制级区别是什么？",
+]
+
+
+def warm_cache(verbose: bool = True) -> dict:
+    """
+    预热打分缓存：把示例问题要用的候选**提前**打完分。
+
+    ## 为什么必须预热（实测教训）
+
+    冷缓存时一个问题的首字延迟是 **53 秒** ——
+    因为重排要从头给约 86 个候选打 LLM 分（9 次批量调用），
+    而 `sources` 事件必须等**整批打完**才能推出去。
+    回答是对的，但**体验不可接受**，演示时根本没法看。
+
+    预热之后同样的题是**秒级**（打分全部命中缓存）。
+
+    ## 为什么这样设计是对的
+
+    这不是"作弊"，是把**两段式的成本结构**摆到明面上：
+      · 重排是"每查询 N 次调用"，成本高但**可以离线预烧**
+      · 生成是"每查询 1 次调用"，成本低且必须实时
+
+    生产里同样可以这么做：把**高频问题**的候选分数提前算好
+    （或者用后台任务在低峰期预热），冷门问题就接受慢一点。
+    真要为冷门问题提速，就得降到 `recall_k=15`
+    —— 代价是"含答案的块进前 5"从 0.9423 掉到 0.8462（ADR-010）。
+
+    返回统计信息，供启动日志与 /api/health 显示。
+    """
+    st = _ensure_ready()
+    ts, gen, scorer = st["two_stage"], st["gen"], st["scorer"]
+    t0 = time.time()
+    n_scored = 0
+    before = len(scorer._cache)  # noqa: SLF001
+
+    for i, q in enumerate(DEMO_QUESTIONS, 1):
+        if verbose:
+            print(f"    [{i}/{len(DEMO_QUESTIONS)}] {q[:38]}", flush=True)
+        # 走与真实请求**完全相同**的路径（recall → 全池打分）
+        pool = ts.recall(q)
+        texts = [h.text for h in pool]
+        # 只打还没缓存的部分（score_many 内部会命中缓存的跳过）
+        scorer.score_many_sync(q, texts)
+        n_scored += len(texts)
+
+    scorer.save_cache()
+    after = len(scorer._cache)  # noqa: SLF001
+    return {
+        "questions": len(DEMO_QUESTIONS),
+        "candidates": n_scored,
+        "new_entries": after - before,
+        "cache_total": after,
+        "seconds": round(time.time() - t0, 1),
+    }
+
+
 def sse(event: str, data) -> str:
     """
     编码一条 SSE 消息。
@@ -326,6 +393,8 @@ def main() -> int:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--recall-k", type=int, default=50)
+    ap.add_argument("--no-warm", action="store_true",
+                    help="跳过缓存预热（冷启动更快，但第一个问题要等几十秒）")
     args = ap.parse_args()
 
     print("=" * 74)
@@ -333,19 +402,32 @@ def main() -> int:
     print("=" * 74)
     print(f"  语料      : {PROJECT2}")
     print(f"  召回池    : union(dense@{args.recall_k}, sparse@{args.recall_k})")
-    print(f"  重排      : LLM 语义重排（复用评估的分数缓存）")
-    print(f"  生成      : deepseek-flash，流式，带编号引用")
-    print(f"  机械校验  : 引用编号范围 + 作用域（跨文档混淆）")
-    print()
-    print(f"  打开 http://{args.host}:{args.port}")
-    print("=" * 74)
+    print("  重排      : LLM 语义重排（复用评估的分数缓存）")
+    print("  生成      : deepseek-flash，流式，带编号引用")
+    print("  机械校验  : 引用编号范围 + 作用域（跨文档混淆）")
     print()
 
     # 先建好索引再起服务 —— 让第一个用户不用等建索引
     st = _ensure_ready(args.recall_k)
     print(f"  索引就绪：{len(st['docs'])} 篇文档 / {len(st['chunks'])} 块 "
           f"（{st['build_s']}s）")
-    print(f"  打分缓存：{len(st['scorer']._cache)} 条")  # noqa: SLF001
+
+    # 预热示例问题的打分缓存
+    #
+    # ⚠️ 不预热的话首个问题要等约 **53 秒**（实测）——
+    #    重排要给 86 个候选打 LLM 分，而 sources 事件必须等整批打完。
+    #    预热后同样的题是秒级。
+    if args.no_warm:
+        print("  缓存预热：跳过（--no-warm）")
+    else:
+        print(f"  缓存预热：{len(DEMO_QUESTIONS)} 个示例问题…")
+        w = warm_cache(verbose=False)
+        print(f"    完成：{w['candidates']} 个候选，新增 {w['new_entries']} 条打分，"
+              f"缓存共 {w['cache_total']} 条（{w['seconds']}s）")
+
+    print()
+    print(f"  打开 http://{args.host}:{args.port}")
+    print("=" * 74)
     print()
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
