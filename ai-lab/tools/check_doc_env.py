@@ -382,6 +382,12 @@ def check_code_block_tools(results: Results) -> None:
         ("ai-lab/python_basics/backend/tools/run_doc_examples.py",
          "教程示例真的能运行（不只语法对）",
          "run_doc_examples.py"),
+        # 第四层：三引号内容里混进 Markdown 正文（08 章那种坏用法）。
+        # compile() 抓不到它 —— `"""..."""` 作为字符串字面量语法是合法的，
+        # 但正文被包进去后读者既读不到讲解、也看不清结构。
+        ("ai-lab/python_basics/backend/tools/scan_triple_quotes.py",
+         "三引号没有把 Markdown 正文包进代码块",
+         "scan_triple_quotes.py"),
     ]
     for rel, label, script in pairs:
         tool = REPO / rel
