@@ -350,6 +350,57 @@ def check_prerequisite_tool(results: Results) -> None:
           ok, summary, "ai-lab/tools/check_doc_prerequisites.py")
 
 
+def check_code_block_tools(results: Results) -> None:
+    """
+    教程代码块的两项检查 —— 都是**读者反馈驱动的**。
+
+    起因：读者反馈"08 章里 `ToolCall` 和 `ModelOutput` 对不上、敲下来会报错""。
+    一查发现那段的三引号错位，把一个代码块切成了两半 ——
+    于是写了这两个工具，免得同类问题再出现。
+
+      1. **语法 + 故意错例区分**：能跑的块必须语法正确；
+         故意演示报错的块（讲 SyntaxError 行号那一节）要能被识别出来。
+      2. **练习区结构**：题干不能直接给答案（实测抓到过
+         `men_len = len([...])` 这种泄漏，而且**有两个副本**），
+         参考答案必须放进 `<details>` 且语法正确。
+
+    为什么值得当硬规则：这两类问题**读者一定会撞上**（照抄必报错），
+    而且靠人眼审 400 行 Markdown 很容易漏。
+    """
+    pairs = [
+        ("ai-lab/python_basics/backend/tools/audit_code_blocks.py",
+         "教程代码块语法正确（故意错例已识别）",
+         "audit_code_blocks.py"),
+        ("ai-lab/python_basics/backend/tools/check_exercises.py",
+         "练习区结构正常（题干不给答案、参考答案可跑）",
+         "check_exercises.py"),
+    ]
+    for rel, label, script in pairs:
+        tool = REPO / rel
+        if not tool.exists():
+            check(results, f"{label} —— 检查脚本存在", False, "缺失", rel)
+            continue
+        out = subprocess.run(
+            [sys.executable, str(tool)],
+            capture_output=True, text=True, encoding="utf-8", timeout=180,
+        )
+        stdout = out.stdout or ""
+        ok = out.returncode == 0
+        if ok:
+            # 从输出里抓一句摘要，便于一眼看到规模
+            import re as _re
+            m = _re.search(r"可运行块 (\d+).*?硬失败（语法错）(\d+)",
+                           stdout, _re.S)
+            if m:
+                summary = f"{m.group(1)} 个可运行块，语法错 {m.group(2)} 处"
+            else:
+                summary = "通过"
+        else:
+            bad = [ln.strip() for ln in stdout.splitlines() if "❌" in ln]
+            summary = (bad[0][:110] if bad else f"exit={out.returncode}")
+        check(results, label, ok, summary, rel)
+
+
 def check_backend_demos(results: Results) -> None:
     """
     后端篇（第二层）的示例必须全部能跑，且输出与正文一致。
@@ -395,6 +446,7 @@ def main() -> int:
     check_readability_tool(results)
     check_duplication_tool(results)
     check_prerequisite_tool(results)
+    check_code_block_tools(results)
     check_backend_demos(results)
 
     passed = sum(1 for _, ok, _, _ in results if ok)
