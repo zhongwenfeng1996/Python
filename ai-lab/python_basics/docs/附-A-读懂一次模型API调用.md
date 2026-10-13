@@ -109,6 +109,7 @@ py -3 ai-lab\week01\show_response.py
 这是最该练熟的一段：
 
 ```python
+# 续上文：`response` 是上面那次 API 调用拿到的字典
 response["choices"]                              # list   一个列表
 response["choices"][0]                           # dict   列表第 0 项，是字典
 response["choices"][0]["message"]                # dict   又是一个字典
