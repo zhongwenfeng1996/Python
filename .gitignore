@@ -63,6 +63,24 @@ dist/
 .vite/
 *.local
 
+# ---------- 教程示例的读写产物 ----------
+# 第 06 章教"文件读写"时用的是这两个文件名：
+#   output.txt    —— with open("output.txt", "w") 的产物
+#   history.json  —— 保存对话历史的示例用的文件名
+#
+# 只要跟着教程敲一遍，它们就会出现。实测被误提交过 3 个副本：
+#   output.txt                              ← 某次在**仓库根**跑示例留下的
+#   ai-lab/python_basics/backend/output.txt
+#   ai-lab/python_basics/backend/history.json
+#
+# 注意：不能写 `output.txt` 这样不带路径的裸模式 —— .gitignore 的模式
+# 是**相对本文件所在目录**（仓库根）匹配的，裸模式会连教程里任何
+# 同名文件一起忽略，将来若真要提交一个示例产物就麻烦了。
+# 这里只忽略这几个"教学演示的落点"，并保留一条"想留档怎么办"的说明。
+/output.txt
+ai-lab/python_basics/backend/output.txt
+ai-lab/python_basics/backend/history.json
+
 # ---------- 数据 / 模型权重（大文件，改用脚本或 Git LFS） ----------
 *.parquet
 *.bin
