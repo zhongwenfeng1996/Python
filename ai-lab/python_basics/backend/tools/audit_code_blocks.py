@@ -63,10 +63,17 @@ except Exception:  # noqa: BLE001
 BUILTINS = set(dir(builtins))
 
 #: 块开头出现这些词 → 判定为"故意错例"，跳过语法检查
+#:
+#: ⚠️ 词表要覆盖**题干的常见说法**。踩过的坑：
+#:    08 章练习 3 的题干写的是"下面代码**会报错**，为什么？"，
+#:    而词表里只有"报错" —— 子串其实能匹配上"会报错"…
+#:    但真正漏掉它的原因是：那句话在**块前面**，而这里只看了块的开头。
+#:    所以块内的关键词判据不够，必须同时看**块前面的题干文字**
+#:    （见 looks_like_error_demo 的 stem_before 参数）。
 ERROR_DEMO_HINTS = (
-    "找出问题", "有什么问题", "哪有问题", "报错", "会报", "错误",
-    "❌", "不推荐", "反例", "错例", "陷阱", "坑", "为什么错",
-    "报出", "失败的写法", "下面这段有",
+    "找出问题", "有什么问题", "哪有问题", "会报错", "报错", "会报",
+    "错误", "❌", "不推荐", "反例", "错例", "陷阱", "坑", "为什么错",
+    "报出", "失败的写法", "下面这段有", "不能这样", "为什么？",
 )
 
 #: 标记"这一段接着上文"的显式注释 —— 有它就不再检查未定义名字
@@ -86,13 +93,22 @@ NON_CODE_HINTS = ("├", "│", "└", "PS>", "$ ", "Traceback (most", "...\n")
 
 
 def split_blocks(md: str):
-    """产出 (起始行号, 语言, 代码)。"""
+    """
+    产出 (起始行号, 语言, 代码, 是否未闭合, 块前面的文字)。
+
+    为什么连"块前面的文字"一起返回：判断一个块是不是"故意演示错误"，
+    关键线索经常在**题干里**而不在块里 —— 比如
+    "下面代码**会报错**，为什么？" 这句在块上方，
+    只看块本身就会把它误判成"坏了"。
+    """
     out = []
     in_block, lang, start, buf = False, "", 0, []
-    for i, line in enumerate(md.splitlines(), 1):
+    lines = md.splitlines()
+    for i, line in enumerate(lines, 1):
         if line.strip().startswith("```"):
             if in_block:
-                out.append((start, lang, "\n".join(buf), False))
+                stem = "\n".join(lines[max(0, start - 8):start - 1])
+                out.append((start, lang, "\n".join(buf), False, stem))
                 in_block, buf = False, []
             else:
                 in_block, lang, start, buf = True, line.strip()[3:].strip(), i + 1, []
@@ -100,7 +116,7 @@ def split_blocks(md: str):
         if in_block:
             buf.append(line)
     if in_block:                       # 没闭合
-        out.append((start, lang, "\n".join(buf), True))
+        out.append((start, lang, "\n".join(buf), True, ""))
     return out
 
 
@@ -108,31 +124,34 @@ def head_text(src: str, n: int = 6) -> str:
     return "\n".join(src.splitlines()[:n])
 
 
-def looks_like_error_demo(src: str) -> bool:
+def looks_like_error_demo(src: str, stem_before: str = "") -> bool:
     """
     判断这个块是不是"故意演示错误"。
 
-    两条判据（命中任一即可）：
+    三条判据（命中任一即可）：
 
       ① 块**开头**出现"找出问题 / 报错 / ❌"这类词
-         —— 说明这句话在描述这个块
 
-      ② 块**本身有语法错**，但块内的注释解释了"这里就是错的"
+      ② **块前面的题干文字**里有问句式提示。
+         ⚠️ 这一条是补上的 —— 踩过的坑：
+         08 章练习 3 的题干是"下面代码**会报错**，为什么？"，
+         那句话在块**前面**，只查块本身就会漏掉它。
+         漏掉的后果是：把一个**正确的教学示例**报成失败。
+
+      ③ 块本身有语法错，但块内注释解释了"这里就是错的"
          —— 比如讲"SyntaxError 报的行号可能不准"那一节：
-
-             ```python
              print("hello"          # 少了右括号
-             print("world")
-             ```
-             报错可能指向第 2 行，但问题在第 1 行。
-
-         这个块语法错是**刻意的**，而且正文紧跟着解释了。
-         判据 ① 抓不到它（块里没写"找出问题"），所以需要 ②。
+         这个块语法错是刻意的，判据 ① ② 都抓不到它。
     """
     head = head_text(src)
     if any(h in head for h in ERROR_DEMO_HINTS):
         return True
-    # ② 语法错 + 块内有解释性注释
+    # ② 看块前面的题干文字（取最近 260 字符，够覆盖一句话加标点）
+    stem = stem_before[-260:]
+    if any(h in stem for h in ("会报错", "有什么问题", "找出问题", "哪有问题",
+                               "为什么错", "不能这样", "下面这段有")):
+        return True
+    # ③ 语法错 + 块内有解释性注释
     try:
         compile(src, "<probe>", "exec")
     except SyntaxError:
@@ -217,7 +236,7 @@ def main() -> int:
         problems: list[str] = []
         notes: list[str] = []
 
-        for start, lang, src, unclosed in split_blocks(md):
+        for start, lang, src, unclosed, stem in split_blocks(md):
             if unclosed:
                 problems.append(f"代码块没闭合（从第 {start} 行开始）")
                 continue
@@ -227,7 +246,7 @@ def main() -> int:
             if looks_like_non_code(src):
                 n_nc += 1
                 continue
-            if looks_like_error_demo(src):
+            if looks_like_error_demo(src, stem):
                 n_err += 1
                 err_demos.append(f"{f.name}:{start}  {head_text(src, 1).strip()[:58]}")
                 continue
