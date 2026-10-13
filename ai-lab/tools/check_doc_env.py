@@ -374,6 +374,14 @@ def check_code_block_tools(results: Results) -> None:
         ("ai-lab/python_basics/backend/tools/check_exercises.py",
          "练习区结构正常（题干不给答案、参考答案可跑）",
          "check_exercises.py"),
+        # 第三层：**真的运行**代码块。
+        #
+        # 为什么单靠 compile() 不够：语法对 ≠ 能跑。这个仓库真出现过
+        # `messages["content"]`（messages 是 list）—— 语法完全合法，
+        # 一跑就 TypeError，而静态检查查不出来。
+        ("ai-lab/python_basics/backend/tools/run_doc_examples.py",
+         "教程示例真的能运行（不只语法对）",
+         "run_doc_examples.py"),
     ]
     for rel, label, script in pairs:
         tool = REPO / rel
