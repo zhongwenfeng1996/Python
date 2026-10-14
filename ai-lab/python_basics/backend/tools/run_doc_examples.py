@@ -109,11 +109,20 @@ def main() -> int:
     ap.add_argument("--chapter", default="")
     ap.add_argument("--all", action="store_true",
                     help="连依赖块外上下文的块也试着跑（预期会有失败）")
+    ap.add_argument("--include-appendix", action="store_true",
+                    help="也跑附录（附-*）。默认跳过 —— 附录是'查用资料'，"
+                         "代码是片段，经常需要真实文件/数据库/依赖才能跑，"
+                         "用'必须能跑'的标准去要求它们会误报")
     args = ap.parse_args()
 
     files = sorted(DOCS.glob("*.md"))
     if args.chapter:
         files = [f for f in files if f.name.startswith(args.chapter)]
+    if not args.include_appendix:
+        # 附录（附-*）是"查用资料"，不是"照抄跑"的教程章节 ——
+        # 它们的代码块是片段（跨块引用 User、需要真实 zip 文件、
+        # 需要 email-validator 依赖），真跑必然失败，但这不是缺陷。
+        files = [f for f in files if not f.name.startswith("附-")]
 
     print("=" * 92)
     print("  真的运行教程里的代码块（不只编译）")
