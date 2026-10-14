@@ -6,6 +6,14 @@ desktop.ini
 .vscode/*
 !.vscode/extensions.json
 
+# ---------- 工具记忆文件（DSH 的 .workbuddy，绝不提交、也绝不进语料） ----------
+# ⚠️ 实测踩到：.workbuddy/memory/ 里的工作日志是 .md 文件，
+#    corpus 的 rglob("*.md") 会把它扫进 RAG 语料 —— 于是"问项目进展"
+#    "问哪些题该弃答"会命中这份**自我记录**，等于把内部工作日志当知识库。
+#    .gitignore 只挡 git 提交，**挡不住 corpus 扫磁盘** ——
+#    所以 corpus.py 的 EXCLUDE_PARTS 里也必须加 `.workbuddy`。
+.workbuddy/
+
 # ---------- 临时文件（诊断、草稿、试验） ----------
 _*.txt
 _*.log
