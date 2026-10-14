@@ -88,6 +88,12 @@ KNOWN_NOISE: dict[tuple[str, str], str] = {
     ("08-类与对象.md", "constructor"): "JS 对照代码 `constructor(name, age) {`，不是 Python 调用",
     # --- 库函数：来自 dataclasses，文档在讲用法时已写全调用形式 ---
     ("08-类与对象.md", "field"): "dataclasses.field(default_factory=list)，库函数，文档已给完整写法",
+    # --- 函数参数：被装饰函数的名字，不是全局变量 ---
+    ("附-B-装饰器生成器与类型注解.md", "func"):
+        "`def timed(func)` 里的 func 是**参数**，`func(*args)` 调用的是传入的那个函数",
+    # --- 库函数：pydantic 的装饰器，正文有 from pydantic import field_validator ---
+    ("附-D-Pydantic的常用模块.md", "field_validator"):
+        "pydantic 库函数，`@field_validator(\"name\")` 装饰器，正文已 import",
 }
 
 
