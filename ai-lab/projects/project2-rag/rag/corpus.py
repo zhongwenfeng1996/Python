@@ -64,6 +64,13 @@ EXCLUDE_PARTS: tuple[str, ...] = (
     #    规律：**任何讨论本项目评估的文档都不能进语料**，
     #    不只是 project2-rag 自己的目录。
     "project3-rag-chat",
+    # ⚠️ 工具记忆文件也必须排除 —— 踩过的坑：
+    #    .workbuddy/memory/ 下的工作日志是 .md，rglob("*.md") 会扫到它。
+    #    它记录的是"修了哪个文件、改了什么"，属于**自我记录**，
+    #    进语料等于把内部工作日志当知识库。
+    #    注意 .gitignore 挡不住这个（corpus 扫的是磁盘，不看 git），
+    #    所以这里必须单独列。
+    ".workbuddy",
     "node_modules",
     ".venv",
     ".git",
