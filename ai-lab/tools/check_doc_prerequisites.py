@@ -83,6 +83,10 @@ FEATURE_CHAPTER: dict[str, int] = {
     "字典推导式": 3,
     "切片": 3,
     ".get(": 3,          # 字典的 get 方法
+    ".items(": 3,        # 字典遍历方法（03 章第 3 节讲，配合解包）
+    ".keys(": 3,         #   同批：keys / values / items
+    ".values(": 3,
+    ".update(": 3,       # 字典合并方法（03 章「增删改」讲）
     "def 定义函数": 4,    # ← 重排后从 5 提到 4（函数在"作用域"之前）
     "lambda": 4,
     "for 循环": 5,
@@ -217,6 +221,11 @@ def _feature_present(feature: str, code: str) -> bool:
         return bool(re.search(r"\w\[[^\]\n]*:[^\]\n]*\]", code))
     if feature == ".get(":
         return ".get(" in code
+    if feature in (".items(", ".keys(", ".values(", ".update("):
+        # 字典方法。⚠️ 用 `feature in code` 会误伤字符串字面量里写方法名的情况，
+        # 但这里 code 已 strip_comments 过、且是代码块，教学代码里把方法名
+        # 写进字符串的概率极低。保守起见仍用子串匹配。
+        return feature in code
     if feature == "for 循环":
         return bool(re.search(r"^\s*for\s+\w+", code, re.M))
     if feature == "while 循环":
